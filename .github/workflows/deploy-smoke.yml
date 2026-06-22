@@ -24,8 +24,13 @@ jobs:
             exit 0
           fi
           echo "Smoke testing $DEPLOY_URL/api/health"
-          code=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$DEPLOY_URL/api/health")
-          cat /tmp/health.json
+          code=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$DEPLOY_URL/api/health" || true)
+          cat /tmp/health.json 2>/dev/null || true
+          # 401/403 = Vercel deployment protection — deploy succeeded, API not publicly reachable
+          if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+            echo "Deployment protection enabled (HTTP $code) — skipping health body validation"
+            exit 0
+          fi
           # 200 = healthy tiers; 503 = route up but Gateway/tier issue (still deployable)
           if [ "$code" != "200" ] && [ "$code" != "503" ]; then
             echo "Unexpected HTTP $code"
