@@ -10,7 +10,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 ## Platform
 
 - [x] **01** AI Gateway two-tier routing (`infra/ai-gateway`)
-- [ ] **02** Vercel KV storage (`infra/kv-storage`)
+- [x] **02** Vercel KV storage (`infra/kv-storage`)
 - [ ] **03** Workflow SDK orchestration (`infra/workflow`)
 
 ## Agent pipeline

@@ -15,3 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 00b: Next.js 15 App Router, Tailwind v4, shadcn/ui (Button, Input, Textarea, Slider, Card, Badge, Skeleton), `vercel.json`, `.env.example`
 - Slice 01: `lib/ai.ts` two-tier AI Gateway routing (`fast`/`strong`), `/api/health`, telemetry tags, unit + contract + integration tests, tooling stubs
 - CI/CD pipeline: CodeQL SAST, dependency audit/review, Gitleaks on all PRs, Vercel post-deploy smoke, husky lint-staged + commitlint — see `docs/CICD.md`
+- Slice 02: `lib/types.ts` + `lib/store.ts` Zod-validated KV CRUD (`createRun`, `updateRun`, `getRun`, `listRuns`), CRUD tests, `scripts/replay-run.ts`
