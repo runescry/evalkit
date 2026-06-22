@@ -91,6 +91,18 @@ describe('lib/ai', () => {
     expect(health.generationId).toBe('gen-2');
   });
 
+  it('pingTier treats missing text as unhealthy', async () => {
+    generateTextMock.mockResolvedValue({
+      text: undefined,
+      usage: { inputTokens: 1, outputTokens: 0 },
+      providerMetadata: {},
+    });
+
+    const health = await pingTier('fast');
+    expect(health.ok).toBe(false);
+    expect(health.error).toBeUndefined();
+  });
+
   it('pingTier surfaces errors without throwing', async () => {
     generateTextMock.mockRejectedValue(new Error('Gateway rate limit'));
 

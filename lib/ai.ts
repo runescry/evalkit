@@ -119,8 +119,7 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
     ...telemetryOptions(tier, step),
   });
 
-  return {
-    ...result,
+  return Object.assign(result, {
     evalkit: extractCallMeta(
       tier,
       step,
@@ -128,7 +127,7 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
       result.providerMetadata as GatewayProviderMetadata,
       result.usage,
     ),
-  };
+  });
 }
 
 export async function generateWithTier(params: GenerateWithTierParams): Promise<GenerateWithTierResult> {
@@ -190,9 +189,10 @@ export async function pingTier(tier: ModelTier): Promise<TierHealthResult> {
       maxRetries: 1,
     });
 
+    const text = result.text ?? '';
     return {
       tier,
-      ok: result.text.trim().toLowerCase().includes('ok'),
+      ok: text.trim().toLowerCase().includes('ok'),
       latencyMs: result.evalkit.latencyMs,
       modelId: result.evalkit.modelId,
       inputTokens: result.evalkit.inputTokens,
