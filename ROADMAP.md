@@ -5,7 +5,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 ## Governance & scaffold
 
 - [x] **00a** Agent harness (`infra/agent-harness`)
-- [ ] **00b** Next.js scaffold (`infra/scaffold`)
+- [x] **00b** Next.js scaffold (`infra/scaffold`)
 
 ## Platform
 
