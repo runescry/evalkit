@@ -1,0 +1,47 @@
+name: Deploy smoke
+
+# Runs after Vercel (Git integration) posts a successful deployment to GitHub.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Post-deploy smoke
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health endpoint reachable
+        env:
+          DEPLOY_URL: ${{ github.event.deployment_status.environment_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "No deployment URL — skipping smoke test"
+            exit 0
+          fi
+          echo "Smoke testing $DEPLOY_URL/api/health"
+          code=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$DEPLOY_URL/api/health" || true)
+          cat /tmp/health.json 2>/dev/null || true
+          # 401/403 = Vercel deployment protection — deploy succeeded, API not publicly reachable
+          if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+            echo "Deployment protection enabled (HTTP $code) — skipping health body validation"
+            exit 0
+          fi
+          # 200 = healthy tiers; 503 = route up but Gateway/tier issue (still deployable)
+          if [ "$code" != "200" ] && [ "$code" != "503" ]; then
+            echo "Unexpected HTTP $code"
+            exit 1
+          fi
+          node -e "
+            const body = JSON.parse(require('fs').readFileSync('/tmp/health.json','utf8'));
+            if (!body.healthy && body.tiers?.every(t => t.error?.includes('credit'))) {
+              console.log('Gateway credits required for healthy:true — route OK');
+            }
+            if (!Array.isArray(body.tiers) || body.tiers.length !== 2) {
+              throw new Error('Invalid /api/health shape');
+            }
+          "
