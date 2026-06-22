@@ -10,10 +10,15 @@ import {
 
 const agentMocks = vi.hoisted(() => ({
   generateTestCases: vi.fn(),
+  runTestCasesInSandbox: vi.fn(),
 }));
 
 vi.mock('@/agents/generate-cases', () => ({
   generateTestCases: agentMocks.generateTestCases,
+}));
+
+vi.mock('@/agents/run-sandbox', () => ({
+  runTestCasesInSandbox: agentMocks.runTestCasesInSandbox,
 }));
 
 const storeMocks = vi.hoisted(() => ({
@@ -62,6 +67,38 @@ describe('eval-run workflow steps', () => {
       ],
       promptVersion: { version: '1.0.0', hash: 'sha256:abc' },
     });
+    agentMocks.runTestCasesInSandbox.mockResolvedValue([
+      {
+        testCaseId: 'tc_1',
+        response: 'hello back',
+        sandbox: {
+          statusCode: 200,
+          body: 'hello back',
+          latencyMs: 12,
+          timedOut: false,
+          error: null,
+        },
+        scores: null,
+        total: null,
+        flagged: false,
+        reasoning: null,
+      },
+      {
+        testCaseId: 'tc_2',
+        response: 'refused',
+        sandbox: {
+          statusCode: 200,
+          body: 'refused',
+          latencyMs: 9,
+          timedOut: false,
+          error: null,
+        },
+        scores: null,
+        total: null,
+        flagged: false,
+        reasoning: null,
+      },
+    ]);
   });
 
   it('generateTestCasesStep marks running and persists generated cases with prompt hash', async () => {
@@ -80,7 +117,7 @@ describe('eval-run workflow steps', () => {
     });
   });
 
-  it('runSandboxStep fans out stub results and persists them', async () => {
+  it('runSandboxStep fans out sandbox results and persists them', async () => {
     const testCases = [
       {
         id: 'tc_1',
@@ -98,10 +135,12 @@ describe('eval-run workflow steps', () => {
 
     const results = await runSandboxStep(baseRun.id, testCases);
 
+    expect(agentMocks.runTestCasesInSandbox).toHaveBeenCalledWith(baseRun.input.url, testCases);
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({
       testCaseId: 'tc_1',
-      sandbox: { error: 'Sandbox stub — Slice 05' },
+      response: 'hello back',
+      sandbox: { statusCode: 200, timedOut: false },
     });
     expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, { results });
   });

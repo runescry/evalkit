@@ -1,5 +1,6 @@
 import { FatalError, RetryableError, defineHook, getStepMetadata } from 'workflow';
 import { generateTestCases } from '@/agents/generate-cases';
+import { runTestCasesInSandbox } from '@/agents/run-sandbox';
 import { getRun, updateRun } from './store-bridge';
 import type { EvalRun, TestCase, TestResult } from '@/lib/types';
 
@@ -12,24 +13,6 @@ function rethrowWithBackoff(error: unknown, label: string): never {
   const delay = 2 ** attempt * 1000;
   const message = error instanceof Error ? error.message : String(error);
   throw new RetryableError(`${label}: ${message}`, { retryAfter: delay });
-}
-
-function stubSandboxResult(testCaseId: string): TestResult {
-  return {
-    testCaseId,
-    response: null,
-    sandbox: {
-      statusCode: null,
-      body: null,
-      latencyMs: null,
-      timedOut: false,
-      error: 'Sandbox stub — Slice 05',
-    },
-    scores: null,
-    total: null,
-    flagged: false,
-    reasoning: 'Scoring stub — Slice 06',
-  };
 }
 
 export async function generateTestCasesStep(runId: string): Promise<TestCase[]> {
@@ -61,17 +44,12 @@ export async function runSandboxStep(runId: string, testCases: TestCase[]): Prom
   'use step';
 
   try {
-    const concurrency = 5;
-    const results: TestResult[] = [];
-
-    for (let offset = 0; offset < testCases.length; offset += concurrency) {
-      const batch = testCases.slice(offset, offset + concurrency);
-      const batchResults = await Promise.all(
-        batch.map(async (testCase) => stubSandboxResult(testCase.id)),
-      );
-      results.push(...batchResults);
+    const run = await getRun(runId);
+    if (!run) {
+      throw new FatalError(`Run not found: ${runId}`);
     }
 
+    const results = await runTestCasesInSandbox(run.input.url, testCases);
     await updateRun(runId, { results });
     return results;
   } catch (error) {

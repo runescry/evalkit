@@ -18,3 +18,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 02: `lib/types.ts` + `lib/store.ts` Zod-validated KV CRUD (`createRun`, `updateRun`, `getRun`, `listRuns`), CRUD tests, `scripts/replay-run.ts`
 - Slice 03: `workflows/eval-run.ts` durable orchestration (`workflow` SDK), POST/GET `/api/runs`, step retries + approval hook stub, unit/contract/integration tests
 - Slice 04: `agents/generate-cases.ts` fast-tier structured test case generation (6 categories), `lib/prompts.ts` versioning + hash on run, unit tests with mocked AI
+- Slice 05: `agents/run-sandbox.ts` isolated Vercel Sandbox per case (10s timeout, fan-out 5), workflow wiring, unit + integration tests with mocked sandbox
