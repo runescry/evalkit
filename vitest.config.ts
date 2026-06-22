@@ -8,7 +8,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['lib/**/*.test.ts', 'agents/**/*.test.ts'],
+    include: ['lib/**/*.test.ts', 'agents/**/*.test.ts', 'workflows/**/*.test.ts'],
     exclude: ['tests/integration/**', 'app/api/**/*.contract.test.ts', 'lib/**/*.crud.test.ts'],
   },
 });
