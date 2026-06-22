@@ -101,12 +101,13 @@ export type GenerateWithTierParams = {
   prompt: string;
   system?: string;
   maxRetries?: number;
+  output?: Parameters<typeof generateText>[0]['output'];
 };
 
 export type GenerateWithTierResult = Awaited<ReturnType<typeof generateWithTierInternal>>;
 
 async function generateWithTierInternal(params: GenerateWithTierParams) {
-  const { tier, step, prompt, system, maxRetries = 3 } = params;
+  const { tier, step, prompt, system, maxRetries = 3, output } = params;
   const { primary } = TIER_MODELS[tier];
   const started = Date.now();
 
@@ -115,6 +116,7 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
     prompt,
     system,
     maxRetries,
+    ...(output ? { output } : {}),
     providerOptions: gatewayOptions(tier, step) as Parameters<typeof generateText>[0]['providerOptions'],
     ...telemetryOptions(tier, step),
   });

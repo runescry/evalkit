@@ -9,7 +9,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 01 | `infra/ai-gateway` | complete | `lib/ai.ts` two-tier routing, `/api/health` |
 | 02 | `infra/kv-storage` | complete | `lib/store.ts` Zod CRUD, p99 < 50ms |
 | 03 | `infra/workflow` | complete | `workflows/eval-run.ts`, durable steps, POST `/api/runs` |
-| 04 | `feature/test-case-generator` | pending | 6 categories, Zod output, prompt hash |
+| 04 | `feature/test-case-generator` | complete | 6 categories, Zod output, prompt hash |
 | 05 | `feature/sandbox-runner` | pending | Isolated sandbox per case, 10s timeout, fan-out 5 |
 | 06 | `feature/rubric-scorer` | pending | 4-dimension scores, flag < 14 |
 | 07 | `feature/report-stream` | pending | SSE report, `/runs/[id]`, mobile layout |
@@ -51,3 +51,10 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `SECURITY.md`, `LICENSE`, `CHANGELOG.md`, `ROADMAP.md`
 - [x] Per-slice test policy in `AGENTS.md` and `CONTRIBUTING.md`
 - [x] `npm run gates` runs unit + contract + crud + integration + build
+
+## Slice 04 acceptance
+
+- [x] `agents/generate-cases.ts` — fast tier via `lib/ai.ts`, structured output with Zod
+- [x] Six categories: hallucination, scope_drift, jailbreak, edge_case, adversarial, regression
+- [x] `lib/prompts.ts` — versioned template; `promptVersions.generateCases` hash stored on run
+- [x] Unit tests mock `lib/ai`; fintech fixture asserts ≥1 per category, no duplicate inputs

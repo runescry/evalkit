@@ -1,6 +1,5 @@
 /**
  * Mock AI SDK helpers for unit/contract tests.
- * Wired in Slice 04 — stub exports until lib/ai.ts exists.
  */
 
 export type MockGenerateTextResult<T = unknown> = {

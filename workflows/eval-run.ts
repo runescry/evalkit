@@ -1,4 +1,5 @@
 import { FatalError, RetryableError, defineHook, getStepMetadata } from 'workflow';
+import { generateTestCases } from '@/agents/generate-cases';
 import { getRun, updateRun } from './store-bridge';
 import type { EvalRun, TestCase, TestResult } from '@/lib/types';
 
@@ -11,24 +12,6 @@ function rethrowWithBackoff(error: unknown, label: string): never {
   const delay = 2 ** attempt * 1000;
   const message = error instanceof Error ? error.message : String(error);
   throw new RetryableError(`${label}: ${message}`, { retryAfter: delay });
-}
-
-const STUB_CATEGORIES = [
-  'edge_case',
-  'hallucination',
-  'scope_drift',
-  'jailbreak',
-  'adversarial',
-  'regression',
-] as const;
-
-function stubTestCases(caseCount: number): TestCase[] {
-  return Array.from({ length: caseCount }, (_, index) => ({
-    id: `tc_stub_${index + 1}`,
-    category: STUB_CATEGORIES[index % STUB_CATEGORIES.length]!,
-    input: `Stub input ${index + 1}`,
-    expectedBehavior: 'Stub behavior — replaced in Slice 04',
-  }));
 }
 
 function stubSandboxResult(testCaseId: string): TestResult {
@@ -59,8 +42,11 @@ export async function generateTestCasesStep(runId: string): Promise<TestCase[]> 
       throw new FatalError(`Run not found: ${runId}`);
     }
 
-    const testCases = stubTestCases(run.input.caseCount);
-    await updateRun(runId, { testCases });
+    const { testCases, promptVersion } = await generateTestCases(runId, run.input);
+    await updateRun(runId, {
+      testCases,
+      promptVersions: { generateCases: promptVersion },
+    });
     return testCases;
   } catch (error) {
     if (error instanceof FatalError) {

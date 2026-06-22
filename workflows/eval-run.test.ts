@@ -8,6 +8,14 @@ import {
   scoreResultsStep,
 } from './eval-run';
 
+const agentMocks = vi.hoisted(() => ({
+  generateTestCases: vi.fn(),
+}));
+
+vi.mock('@/agents/generate-cases', () => ({
+  generateTestCases: agentMocks.generateTestCases,
+}));
+
 const storeMocks = vi.hoisted(() => ({
   getRun: vi.fn(),
   updateRun: vi.fn(),
@@ -43,18 +51,33 @@ describe('eval-run workflow steps', () => {
       ...baseRun,
       ...patch,
     }));
+    agentMocks.generateTestCases.mockResolvedValue({
+      testCases: [
+        {
+          id: 'tc_run_test123_1',
+          category: 'edge_case',
+          input: 'hello',
+          expectedBehavior: 'respond',
+        },
+      ],
+      promptVersion: { version: '1.0.0', hash: 'sha256:abc' },
+    });
   });
 
-  it('generateTestCasesStep marks running and writes stub cases', async () => {
+  it('generateTestCasesStep marks running and persists generated cases with prompt hash', async () => {
     const cases = await generateTestCasesStep(baseRun.id);
 
     expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, { status: 'running' });
-    expect(cases).toHaveLength(3);
+    expect(agentMocks.generateTestCases).toHaveBeenCalledWith(baseRun.id, baseRun.input);
+    expect(cases).toHaveLength(1);
     expect(cases[0]).toMatchObject({
-      id: expect.stringMatching(/^tc_stub_/),
-      category: expect.any(String),
+      id: 'tc_run_test123_1',
+      category: 'edge_case',
     });
-    expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, { testCases: cases });
+    expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, {
+      testCases: cases,
+      promptVersions: { generateCases: { version: '1.0.0', hash: 'sha256:abc' } },
+    });
   });
 
   it('runSandboxStep fans out stub results and persists them', async () => {
