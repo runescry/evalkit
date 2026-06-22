@@ -19,10 +19,11 @@
     "prepare": "node -e \"try{require('husky')}catch(e){}\" || true"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.8.0",
+    "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
+    "@types/node": "^26.0.0",
     "husky": "^9.1.7",
     "typescript": "^6.0.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.9"
   }
 }
