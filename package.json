@@ -18,7 +18,11 @@
     "test:integration": "node scripts/test-na.mjs integration vitest.config.integration.ts",
     "test:eval": "node -e \"console.log('eval: N/A until Slice 10')\"",
     "gates": "npm run typecheck && npm run lint && npm run test && npm run test:contract && npm run test:crud && npm run test:integration && npm run build",
+    "audit:ci": "npm audit --audit-level=high",
     "prepare": "node -e \"try{require('husky')}catch(e){}\" || true"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix --max-warnings=0"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.133",
@@ -46,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "^15.3.4",
     "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
     "tailwindcss": "^4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"

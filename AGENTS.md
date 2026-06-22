@@ -29,6 +29,7 @@ Read in sequence **before** writing code:
 | [docs/ENV.md](./docs/ENV.md) | Environment variables (canonical) |
 | [docs/PROMPTS.md](./docs/PROMPTS.md) | Prompt versioning and hashes |
 | [docs/RUNBOOK.md](./docs/RUNBOOK.md) | Debug failed runs, KV, workflow |
+| [docs/CICD.md](./docs/CICD.md) | Local → Git → Vercel pipeline |
 | [docs/ANTI_PATTERNS.md](./docs/ANTI_PATTERNS.md) | Forbidden patterns |
 | [CHANGELOG.md](./CHANGELOG.md) | What shipped per slice |
 | [SECURITY.md](./SECURITY.md) | Secrets and PII |
