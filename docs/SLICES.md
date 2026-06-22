@@ -8,7 +8,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 00b | `infra/scaffold` | complete | Next.js 15, shadcn, vercel.json, `.env.example`, deploy green |
 | 01 | `infra/ai-gateway` | complete | `lib/ai.ts` two-tier routing, `/api/health` |
 | 02 | `infra/kv-storage` | complete | `lib/store.ts` Zod CRUD, p99 < 50ms |
-| 03 | `infra/workflow` | pending | `workflows/eval-run.ts`, durable steps, POST `/api/runs` |
+| 03 | `infra/workflow` | complete | `workflows/eval-run.ts`, durable steps, POST `/api/runs` |
 | 04 | `feature/test-case-generator` | pending | 6 categories, Zod output, prompt hash |
 | 05 | `feature/sandbox-runner` | pending | Isolated sandbox per case, 10s timeout, fan-out 5 |
 | 06 | `feature/rubric-scorer` | pending | 4-dimension scores, flag < 14 |
