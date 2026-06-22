@@ -14,8 +14,10 @@
 Configure on `main`:
 
 - Require pull request before merging
-- Require status checks: `CI`, `secret-scan`
+- Require status checks: `Quality gates`, `Dependency audit`, `Gitleaks`, `SAST`
 - Do not allow force pushes
+
+Full pipeline: [CICD.md](./CICD.md) (local → Git → Vercel).
 
 ## Local setup
 

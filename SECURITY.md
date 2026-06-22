@@ -24,7 +24,17 @@ For security vulnerabilities, contact the repository owner directly rather than 
 
 ## CI
 
-Pull requests run secret scanning (`.github/workflows/secret-scan.yml`). If a secret is detected, the build fails — rotate the credential and remove it from git history.
+Pull requests and pushes run:
+
+- **Quality gates** — `npm run gates` (typecheck, lint, tests, build)
+- **Dependency audit** — `npm audit --audit-level=high`
+- **Gitleaks** — secret scanning ([`.github/workflows/secret-scan.yml`](../.github/workflows/secret-scan.yml))
+- **CodeQL** — SAST for JavaScript/TypeScript
+- **Dependency review** — on pull requests only
+
+See [docs/CICD.md](./docs/CICD.md) for the full local → Git → Vercel pipeline.
+
+If a secret is detected, rotate the credential and remove it from git history.
 
 ## Dependencies
 
