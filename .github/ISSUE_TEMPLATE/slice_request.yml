@@ -1,0 +1,17 @@
+name: Slice request
+description: Propose work outside the current slice plan
+title: "[slice]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What do you want to add or change?
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why?
+    validations:
+      required: true

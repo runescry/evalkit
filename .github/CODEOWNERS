@@ -1,0 +1,6 @@
+/agents/       @runescry
+/workflows/     @runescry
+/evals/         @runescry
+/lib/ai.ts      @runescry
+/lib/store.ts   @runescry
+/docs/          @runescry

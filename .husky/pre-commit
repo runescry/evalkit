@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Wired in Slice 00b after npm install
+if command -v npx >/dev/null 2>&1 && [ -f package.json ]; then
+  npx lint-staged 2>/dev/null || true
+fi

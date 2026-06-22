@@ -1,0 +1,14 @@
+---
+description: EvalKit agent modules and workflows — AI SDK v6, tiers, prompts
+globs: agents/**,workflows/**
+alwaysApply: false
+---
+
+# Agent & workflow rules
+
+- All LLM calls go through `lib/ai.ts` with `tier: 'fast' | 'strong'` and `evalkit.step` metadata
+- Use AI SDK v6: `generateText` + `Output.object({ schema })` for structured output
+- Store prompt version hash from `lib/prompts.ts` on the run record
+- Workflow steps use `"use step"`; orchestrator uses `"use workflow"` in `workflows/eval-run.ts`
+- Each step calls `updateRun(runId, patch)` for progress visibility
+- Unit tests mock via `lib/test/mock-ai.ts` — assert Zod shape and category distribution, not exact text

@@ -1,0 +1,30 @@
+---
+description: Engineering discipline — minimal code, per-slice commits, full gates before commit
+alwaysApply: true
+---
+
+# Do not
+
+## Code & scope
+
+- Smallest diff that solves the task; no speculative features or drive-by refactors
+- No duplication — use helpers in `AGENTS.md` and `docs/ANTI_PATTERNS.md`
+- One slice or one user request per session unless explicitly asked
+- No trivial tests or comments that restate code
+
+## Git & deploy
+
+- **Commit every completed slice** — one conventional commit after gates pass
+- Always run `npm run gates` before commit (unit + contract + crud + integration + build)
+- Do not push or deploy without explicit user request
+- Do not push with failing CI; no force-push or hook skips unless user requests
+
+## Tests
+
+- Add/update tests for each slice per `docs/SLICES.md#per-slice-test-requirements`
+- Unit tests mock AI via `lib/test/mock-ai.ts` — no live Gateway in CI
+- CRUD tests in `lib/**/*.crud.test.ts` when touching `lib/store.ts`
+
+## When in doubt
+
+Read `AGENTS.md`, `docs/SLICES.md`, and `docs/ARCHITECTURE.md`. Ask before large architectural changes.

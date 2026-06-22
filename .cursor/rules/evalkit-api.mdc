@@ -1,0 +1,13 @@
+---
+description: API route conventions — Zod, KV store, runId correlation
+globs: app/api/**
+alwaysApply: false
+---
+
+# API route rules
+
+- Validate request bodies with Zod; return 400 with structured errors
+- Persist runs only via `lib/store.ts` — no raw `@vercel/kv` puts
+- Include `runId` in logs and error responses where applicable
+- Workflow-triggering routes use Node.js runtime (not Edge) when Workflow SDK is involved
+- Contract tests in `app/api/**/*.contract.test.ts` — mock KV when storage is not under test

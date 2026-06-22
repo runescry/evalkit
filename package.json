@@ -1,0 +1,28 @@
+{
+  "name": "evalkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI eval harness for deployed chatbots",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "node -e \"console.log('lint stub (Slice 00b)')\"",
+    "test": "vitest run --config vitest.config.ts",
+    "test:contract": "node scripts/test-na.mjs contract vitest.config.contract.ts",
+    "test:crud": "node scripts/test-na.mjs crud vitest.config.crud.ts",
+    "test:integration": "node scripts/test-na.mjs integration vitest.config.integration.ts",
+    "test:eval": "node -e \"console.log('eval: N/A until Slice 10')\"",
+    "build": "node -e \"console.log('build stub (Slice 00b)')\"",
+    "gates": "npm run typecheck && npm run lint && npm run test && npm run test:contract && npm run test:crud && npm run test:integration && npm run build",
+    "prepare": "node -e \"try{require('husky')}catch(e){}\" || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "husky": "^9.1.7",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

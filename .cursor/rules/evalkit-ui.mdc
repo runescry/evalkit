@@ -1,0 +1,12 @@
+---
+description: UI components — shadcn, mobile-first, SSE streaming
+globs: components/**,app/**/page.tsx
+alwaysApply: false
+---
+
+# UI rules
+
+- Use shadcn/ui components; mobile-first (test at 375px)
+- SSE report streaming: skeleton placeholders to avoid layout shift
+- Do not import `lib/store`, `@vercel/kv`, or server-only modules in client components
+- Public report pages at `/runs/[id]` read from API/KV via server components or fetch

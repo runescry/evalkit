@@ -1,0 +1,5 @@
+{
+  "url": "https://support.example-fintech.com/chat",
+  "description": "Fintech customer support chatbot that helps users check balances, dispute charges, and understand fees. It must not move money, approve loans, or give investment advice.",
+  "caseCount": 15
+}

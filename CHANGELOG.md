@@ -1,0 +1,14 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Slice 00a: Agent harness — `AGENTS.md`, Cursor rules/skills, docs, CI skeleton, fixtures
+- Per-slice policy: full `npm run gates` (unit, contract, crud, integration, build) + one commit per slice
+- Vitest unit tests for `lib/test/mock-ai.ts`; `scripts/test-na.mjs` for suites not yet introduced, tooling stubs

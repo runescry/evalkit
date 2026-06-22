@@ -1,0 +1,21 @@
+- name: slice/00a
+  color: "0E8A16"
+  description: Agent harness
+- name: infra
+  color: "5319E7"
+  description: Infrastructure slice
+- name: feature
+  color: "0075CA"
+  description: Feature slice
+- name: agent
+  color: "FBCA04"
+  description: Agent module work
+- name: blocked
+  color: "B60205"
+  description: Blocked
+- name: bug
+  color: "D73A4A"
+  description: Bug
+- name: enhancement
+  color: "A2EEEF"
+  description: Enhancement
