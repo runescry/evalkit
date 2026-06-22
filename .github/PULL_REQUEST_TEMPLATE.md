@@ -16,14 +16,13 @@
 
 ## Gates (all applicable must pass)
 
-- [ ] `npm run typecheck`
-- [ ] `npm run lint`
-- [ ] `npm run test` (unit)
-- [ ] `npm run test:contract` (from Slice 01)
-- [ ] `npm run test:crud` (from Slice 02)
-- [ ] `npm run test:integration` (from Slice 03)
+- [ ] `npm run gates` locally before commit
+- [ ] `Quality gates` (CI)
+- [ ] `Dependency audit` (CI)
+- [ ] `Gitleaks` (secret scan)
+- [ ] `SAST` (CodeQL, PRs to `main`)
+- [ ] `Dependency review` (PRs)
 - [ ] `npm run test:eval` (Slice 10+)
-- [ ] `npm run build`
 
 ## Commit
 
