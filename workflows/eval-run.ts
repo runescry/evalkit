@@ -3,6 +3,7 @@ import { buildReport } from '@/agents/build-report';
 import { generateTestCases } from '@/agents/generate-cases';
 import { runTestCasesInSandbox } from '@/agents/run-sandbox';
 import { scoreTestResults } from '@/agents/score-results';
+import { suggestFixes } from '@/agents/suggest-fixes';
 import { getRun, updateRun } from './store-bridge';
 import type { EvalRun, TestCase, TestResult } from '@/lib/types';
 
@@ -137,20 +138,32 @@ export async function applyFixesStep(runId: string): Promise<void> {
   'use step';
 
   try {
+    const run = await getRun(runId);
+    if (!run) {
+      throw new FatalError(`Run not found: ${runId}`);
+    }
+
+    const reportMarkdown = run.report?.markdown ?? '';
+    const { fixes, promptVersion } = await suggestFixes(runId, {
+      description: run.input.description,
+      reportMarkdown,
+      testCases: run.testCases,
+      results: run.results,
+    });
+
     await updateRun(runId, {
-      suggestedFixes: [
-        {
-          id: 'fix_stub_1',
-          target: 'system-prompt',
-          description: 'Stub fix — Slice 09',
-          diff: '--- a/prompt\n+++ b/prompt\n',
-          approved: null,
-        },
-      ],
+      suggestedFixes: fixes,
+      promptVersions: {
+        ...run.promptVersions,
+        suggestFixes: promptVersion,
+      },
       approvedAt: Date.now(),
       status: 'complete',
     });
   } catch (error) {
+    if (error instanceof FatalError) {
+      throw error;
+    }
     rethrowWithBackoff(error, 'apply-fixes');
   }
 }

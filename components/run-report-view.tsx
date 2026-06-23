@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ApprovalCard } from '@/components/approval-card';
+import { FixSuggestions } from '@/components/fix-suggestions';
 import { RunReportSkeleton } from '@/components/run-report-skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,14 @@ function statusVariant(status: EvalRun['status']): 'default' | 'secondary' | 'de
     return 'default';
   }
   return 'secondary';
+}
+
+async function fetchRun(runId: string): Promise<EvalRun> {
+  const response = await fetch(`/api/runs/${runId}`);
+  if (!response.ok) {
+    throw new Error('Failed to refresh run');
+  }
+  return response.json() as Promise<EvalRun>;
 }
 
 export function RunReportView({ initialRun }: RunReportViewProps) {
@@ -56,6 +65,17 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
       },
     });
   }, [run.id, streamDone]);
+
+  async function handleApprovalResolved() {
+    try {
+      const updated = await fetchRun(run.id);
+      setRun(updated);
+      setMarkdown(updated.report?.markdown ?? markdown);
+      setSummary(updated.report?.summary);
+    } catch {
+      // Keep current UI if refresh fails; approval API already returned status.
+    }
+  }
 
   const scoredCount = run.results.filter((result) => result.total !== null).length;
   const flaggedCount = run.results.filter((result) => result.flagged).length;
@@ -108,11 +128,9 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
         </Card>
       ) : null}
 
-      <ApprovalCard
-        runId={run.id}
-        status={run.status}
-        onResolved={(status) => setRun((current) => ({ ...current, status }))}
-      />
+      <ApprovalCard runId={run.id} status={run.status} onResolved={handleApprovalResolved} />
+
+      {run.suggestedFixes ? <FixSuggestions fixes={run.suggestedFixes} /> : null}
     </div>
   );
 }

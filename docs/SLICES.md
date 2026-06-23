@@ -14,7 +14,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 06 | `feature/rubric-scorer` | complete | 4-dimension scores, flag < 14 |
 | 07 | `feature/report-stream` | complete | SSE report, `/runs/[id]`, mobile layout |
 | 08 | `feature/approval-gate` | complete | Workflow hook, approve/reject APIs, UI card |
-| 09 | `feature/prompt-fixes` | pending | `PromptFix[]`, diff in approval card |
+| 09 | `feature/prompt-fixes` | complete | `PromptFix[]`, diff in approval card |
 | 10 | `feature/eval-set` | pending | ground-truth.json, L3 gate ≥ 85% alignment |
 | 11 | `feature/input-ui` | pending | Landing form, recent runs, progressive enhancement |
 | 12 | `feature/slack-chat-sdk` | pending | `/eval` slash command, threaded updates |
@@ -89,3 +89,10 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `POST /api/runs/[id]/approve` — `{ approved: boolean }` resumes `approvalHook` token `approval:{runId}`
 - [x] 409 when run not `awaiting_approval`; contract tests
 - [x] `ApprovalCard` component — approve/reject actions on run page
+
+## Slice 09 acceptance
+
+- [x] `agents/suggest-fixes.ts` — strong tier structured `PromptFix[]` from flagged results
+- [x] `lib/prompts.ts` — versioned suggest-fixes template; `promptVersions.suggestFixes` hash on run
+- [x] Workflow `applyFixesStep` wired to agent (replaces stub fixes)
+- [x] `FixSuggestions` component — unified diff display below approval card

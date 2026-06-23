@@ -157,3 +157,58 @@ export function getBuildReportPromptMeta(): { version: string; hash: string } {
     hash: hashPrompt(BUILD_REPORT_PROMPT.system),
   };
 }
+
+export const SUGGEST_FIXES_PROMPT = {
+  version: '1.0.0',
+  system: `You suggest prompt and policy fixes for a chatbot based on eval findings.
+
+Return targeted fixes only for flagged or weak cases. Each fix must include:
+- target: e.g. system-prompt, safety-policy, tool-description
+- description: one sentence rationale
+- diff: unified diff format (--- a/... +++ b/...) showing proposed text changes
+
+Prefer small, actionable edits. Do not suggest fixes when results are already strong.`,
+  buildUserPrompt: (params: {
+    description: string;
+    reportMarkdown: string;
+    flaggedResults: Array<{
+      testCaseId: string;
+      category: string;
+      input: string;
+      expectedBehavior: string;
+      response: string | null;
+      total: number | null;
+      reasoning: string | null;
+    }>;
+  }) => {
+    const flagged = params.flaggedResults
+      .map(
+        (result) =>
+          `- ${result.testCaseId} (${result.category}) total=${result.total}
+  input: ${result.input}
+  expected: ${result.expectedBehavior}
+  response: ${result.response ?? '(none)'}
+  reasoning: ${result.reasoning ?? '(none)'}`,
+      )
+      .join('\n');
+
+    return `Application description:
+${params.description}
+
+Eval report:
+${params.reportMarkdown}
+
+Flagged / weak results:
+${flagged || '(none — return an empty fixes array)'}
+
+Return prompt fixes as structured JSON.`;
+  },
+};
+
+/** Stable hash for the suggest-fixes prompt template. */
+export function getSuggestFixesPromptMeta(): { version: string; hash: string } {
+  return {
+    version: SUGGEST_FIXES_PROMPT.version,
+    hash: hashPrompt(SUGGEST_FIXES_PROMPT.system),
+  };
+}

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resumeHook, start } from 'workflow/api';
 import { waitForHook } from '@workflow/vitest';
 import type { BuildReportParams, BuildReportResult } from '@/agents/build-report';
+import type { SuggestFixesResult } from '@/agents/suggest-fixes';
 import type { GenerateTestCasesResult } from '@/agents/generate-cases';
 import type { RunSandboxParams } from '@/agents/run-sandbox';
 import { buildUnscoredTestResult } from '@/agents/run-sandbox';
@@ -83,6 +84,23 @@ async function stubBuildReport(
   };
 }
 
+async function stubSuggestFixes(
+  runId: string,
+): Promise<SuggestFixesResult> {
+  return {
+    fixes: [
+      {
+        id: `fix_${runId}_1`,
+        target: 'system-prompt',
+        description: 'Integration stub fix',
+        diff: '--- a/prompt\n+++ b/prompt\n+integration guard',
+        approved: null,
+      },
+    ],
+    promptVersion: { version: '1.0.0', hash: 'sha256:integration-fixes' },
+  };
+}
+
 describe('evalRunWorkflow resume', () => {
   beforeEach(() => {
     memoryStore.reset();
@@ -94,6 +112,7 @@ describe('evalRunWorkflow resume', () => {
     globalThis.__EVALKIT_RUN_SANDBOX__ = stubRunSandbox;
     globalThis.__EVALKIT_SCORE_RESULTS__ = stubScoreResults;
     globalThis.__EVALKIT_BUILD_REPORT__ = stubBuildReport;
+    globalThis.__EVALKIT_SUGGEST_FIXES__ = stubSuggestFixes;
   });
 
   afterEach(() => {
@@ -102,6 +121,7 @@ describe('evalRunWorkflow resume', () => {
     delete globalThis.__EVALKIT_RUN_SANDBOX__;
     delete globalThis.__EVALKIT_SCORE_RESULTS__;
     delete globalThis.__EVALKIT_BUILD_REPORT__;
+    delete globalThis.__EVALKIT_SUGGEST_FIXES__;
   });
 
   it('resumes after approval hook and completes with stub fixes', async () => {
@@ -119,7 +139,12 @@ describe('evalRunWorkflow resume', () => {
     const result = await workflowRun.returnValue;
     expect(result.status).toBe('complete');
     expect(result.suggestedFixes).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'fix_stub_1' })]),
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: `fix_${run.id}_1`,
+          diff: expect.stringContaining('integration guard'),
+        }),
+      ]),
     );
     expect(result.testCases).toHaveLength(2);
     expect(result.results).toHaveLength(2);

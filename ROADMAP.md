@@ -23,7 +23,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 
 - [x] **07** Report stream + UI (`feature/report-stream`)
 - [x] **08** Approval gate (`feature/approval-gate`)
-- [ ] **09** Prompt fix suggester (`feature/prompt-fixes`)
+- [x] **09** Prompt fix suggester (`feature/prompt-fixes`)
 - [ ] **10** Eval set + L3 gate (`feature/eval-set`)
 - [ ] **11** Input UI (`feature/input-ui`)
 - [ ] **12** Slack delivery (`feature/slack-chat-sdk`)
