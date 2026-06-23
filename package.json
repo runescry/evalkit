@@ -6,6 +6,12 @@
   "engines": {
     "node": ">=22"
   },
+  "overrides": {
+    "undici": "7.28.0",
+    "@swc/helpers": "0.5.23",
+    "chokidar": "5.0.0",
+    "readdirp": "5.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -28,6 +34,7 @@
     "@ai-sdk/gateway": "^3.0.133",
     "@base-ui/react": "^1.6.0",
     "@vercel/kv": "^3.0.0",
+    "@vercel/sandbox": "^2.2.1",
     "ai": "^6.0.208",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

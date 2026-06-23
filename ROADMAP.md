@@ -16,7 +16,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 ## Agent pipeline
 
 - [x] **04** Test case generator (`feature/test-case-generator`)
-- [ ] **05** Sandbox runner (`feature/sandbox-runner`)
+- [x] **05** Sandbox runner (`feature/sandbox-runner`)
 - [ ] **06** Rubric scorer (`feature/rubric-scorer`)
 
 ## User-facing

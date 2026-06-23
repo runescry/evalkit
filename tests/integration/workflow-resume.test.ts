@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resumeHook, start } from 'workflow/api';
 import { waitForHook } from '@workflow/vitest';
 import type { GenerateTestCasesResult } from '@/agents/generate-cases';
+import type { RunSandboxParams } from '@/agents/run-sandbox';
+import { buildUnscoredTestResult } from '@/agents/run-sandbox';
 import { createInMemoryWorkflowStore } from '@/lib/test/workflow-store';
 import { testCaseCategorySchema, type EvalRunInput } from '@/lib/types';
 import { approvalHook, evalRunWorkflow } from '@/workflows/eval-run';
@@ -21,6 +23,22 @@ function stubGenerateTestCases(runId: string, input: EvalRunInput): Promise<Gene
   });
 }
 
+function stubRunSandbox(params: RunSandboxParams) {
+  return Promise.resolve(
+    buildUnscoredTestResult(
+      params.testCase.id,
+      {
+        statusCode: 200,
+        body: 'integration sandbox response',
+        latencyMs: 3,
+        timedOut: false,
+        error: null,
+      },
+      'integration sandbox response',
+    ),
+  );
+}
+
 describe('evalRunWorkflow resume', () => {
   beforeEach(() => {
     memoryStore.reset();
@@ -29,11 +47,13 @@ describe('evalRunWorkflow resume', () => {
       updateRun: memoryStore.updateRun,
     };
     globalThis.__EVALKIT_GENERATE_TEST_CASES__ = stubGenerateTestCases;
+    globalThis.__EVALKIT_RUN_SANDBOX__ = stubRunSandbox;
   });
 
   afterEach(() => {
     delete globalThis.__EVALKIT_WORKFLOW_STORE__;
     delete globalThis.__EVALKIT_GENERATE_TEST_CASES__;
+    delete globalThis.__EVALKIT_RUN_SANDBOX__;
   });
 
   it('resumes after approval hook and completes with stub fixes', async () => {
