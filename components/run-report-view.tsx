@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ApprovalCard } from '@/components/approval-card';
 import { RunReportSkeleton } from '@/components/run-report-skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,6 +107,12 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           </CardHeader>
         </Card>
       ) : null}
+
+      <ApprovalCard
+        runId={run.id}
+        status={run.status}
+        onResolved={(status) => setRun((current) => ({ ...current, status }))}
+      />
     </div>
   );
 }

@@ -21,3 +21,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 05: `agents/run-sandbox.ts` isolated Vercel Sandbox per case (10s timeout, fan-out 5), workflow wiring, unit + integration tests with mocked sandbox
 - Slice 06: `agents/score-results.ts` strong-tier rubric scoring (4 dimensions, flag < 14), incremental KV updates, prompt hash on run, unit + integration tests with mocked AI
 - Slice 07: `agents/build-report.ts` streaming markdown report, `GET /api/runs/[id]/stream` SSE, `/runs/[id]` UI with skeleton + `lib/sse.ts` helper
+- Slice 08: `POST /api/runs/[id]/approve` resumes workflow approval hook, `ApprovalCard` on run page

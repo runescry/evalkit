@@ -13,7 +13,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 05 | `feature/sandbox-runner` | complete | Isolated sandbox per case, 10s timeout, fan-out 5 |
 | 06 | `feature/rubric-scorer` | complete | 4-dimension scores, flag < 14 |
 | 07 | `feature/report-stream` | complete | SSE report, `/runs/[id]`, mobile layout |
-| 08 | `feature/approval-gate` | pending | Workflow hook, approve/reject APIs, UI card |
+| 08 | `feature/approval-gate` | complete | Workflow hook, approve/reject APIs, UI card |
 | 09 | `feature/prompt-fixes` | pending | `PromptFix[]`, diff in approval card |
 | 10 | `feature/eval-set` | pending | ground-truth.json, L3 gate ≥ 85% alignment |
 | 11 | `feature/input-ui` | pending | Landing form, recent runs, progressive enhancement |
@@ -83,3 +83,9 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `lib/sse.ts` — shared client subscribe helper (no inline parsing in components)
 - [x] `/runs/[id]` page — skeleton UI, responsive layout, streams report until `awaiting_approval`
 - [x] Workflow `buildReportStep` wired to agent; unit + integration tests with mocks
+
+## Slice 08 acceptance
+
+- [x] `POST /api/runs/[id]/approve` — `{ approved: boolean }` resumes `approvalHook` token `approval:{runId}`
+- [x] 409 when run not `awaiting_approval`; contract tests
+- [x] `ApprovalCard` component — approve/reject actions on run page
