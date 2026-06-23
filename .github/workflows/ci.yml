@@ -53,4 +53,3 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:eval
-        continue-on-error: true
