@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET } from './[id]/route';
-import { POST } from './route';
+import { GET as getRunById } from './[id]/route';
+import { GET, POST } from './route';
 
 const storeMocks = vi.hoisted(() => ({
   createRun: vi.fn(),
   getRun: vi.fn(),
+  listRuns: vi.fn(),
 }));
 
 const startMock = vi.hoisted(() => vi.fn());
@@ -12,6 +13,7 @@ const startMock = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/store', () => ({
   createRun: storeMocks.createRun,
   getRun: storeMocks.getRun,
+  listRuns: storeMocks.listRuns,
   StoreValidationError: class StoreValidationError extends Error {
     name = 'StoreValidationError';
   },
@@ -88,6 +90,27 @@ describe('POST /api/runs', () => {
   });
 });
 
+describe('GET /api/runs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storeMocks.listRuns.mockResolvedValue([sampleRun]);
+  });
+
+  it('returns recent runs summary', async () => {
+    const response = await GET(new Request('http://localhost/api/runs?limit=5'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.runs).toHaveLength(1);
+    expect(body.runs[0]).toMatchObject({
+      id: sampleRun.id,
+      status: 'pending',
+      description: sampleRun.input.description,
+    });
+    expect(storeMocks.listRuns).toHaveBeenCalledWith(5);
+  });
+});
+
 describe('GET /api/runs/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,7 +119,7 @@ describe('GET /api/runs/[id]', () => {
   it('returns run status when found', async () => {
     storeMocks.getRun.mockResolvedValue({ ...sampleRun, status: 'running' });
 
-    const response = await GET(new Request('http://localhost/api/runs/run_abc123'), {
+    const response = await getRunById(new Request('http://localhost/api/runs/run_abc123'), {
       params: Promise.resolve({ id: sampleRun.id }),
     });
     const body = await response.json();
@@ -109,7 +132,7 @@ describe('GET /api/runs/[id]', () => {
   it('returns 404 when run is missing', async () => {
     storeMocks.getRun.mockResolvedValue(null);
 
-    const response = await GET(new Request('http://localhost/api/runs/missing'), {
+    const response = await getRunById(new Request('http://localhost/api/runs/missing'), {
       params: Promise.resolve({ id: 'missing' }),
     });
     const body = await response.json();
