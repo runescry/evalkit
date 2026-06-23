@@ -16,6 +16,14 @@ vi.mock('@/workflows/store-bridge', () => ({
   updateRun: storeMocks.updateRun,
 }));
 
+const observabilityMocks = vi.hoisted(() => ({
+  recordAiCallWithSpan: vi.fn(),
+}));
+
+vi.mock('@/lib/observability', () => ({
+  recordAiCallWithSpan: observabilityMocks.recordAiCallWithSpan,
+}));
+
 const params = {
   description: 'Fintech support bot',
   testCases: [
@@ -61,6 +69,7 @@ describe('buildReport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storeMocks.updateRun.mockResolvedValue({});
+    observabilityMocks.recordAiCallWithSpan.mockResolvedValue(undefined);
     delete globalThis.__EVALKIT_BUILD_REPORT__;
   });
 
@@ -68,7 +77,16 @@ describe('buildReport', () => {
     const chunks = ['# Eval report\n\n', 'The bot ', 'handled auth well.'];
     streamWithTierMock.mockReturnValue({
       textStream: mockStreamText(chunks),
-      evalkit: Promise.resolve({}),
+      evalkit: Promise.resolve({
+        evalkitTier: 'strong',
+        evalkitStep: 'build-report',
+        latencyMs: 50,
+        modelId: 'anthropic/claude-sonnet-4-6',
+        inputTokens: 10,
+        outputTokens: 20,
+        totalCost: 0.001,
+        generationId: 'gen-stream',
+      }),
     });
 
     const result = await buildReport('run_test', params);
@@ -88,6 +106,10 @@ describe('buildReport', () => {
       }),
     );
     expect(REPORT_KV_FLUSH_CHARS).toBeGreaterThan(0);
+    expect(observabilityMocks.recordAiCallWithSpan).toHaveBeenCalledWith(
+      'run_test',
+      expect.objectContaining({ evalkitStep: 'build-report' }),
+    );
   });
 
   it('uses global hook when provided', async () => {

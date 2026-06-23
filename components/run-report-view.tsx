@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { ApprovalCard } from '@/components/approval-card';
 import { FixSuggestions } from '@/components/fix-suggestions';
+import { RunCostSummary } from '@/components/run-cost-summary';
 import { RunReportSkeleton } from '@/components/run-report-skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeRunStream } from '@/lib/sse';
-import type { EvalRun } from '@/lib/types';
+import type { EvalRun, RunMetrics } from '@/lib/types';
 
 type RunReportViewProps = {
   initialRun: EvalRun;
@@ -31,8 +32,18 @@ async function fetchRun(runId: string): Promise<EvalRun> {
   return response.json() as Promise<EvalRun>;
 }
 
+async function fetchRunMetrics(runId: string): Promise<RunMetrics | undefined> {
+  const response = await fetch(`/api/runs/${runId}/metrics`);
+  if (!response.ok) {
+    return undefined;
+  }
+  const body = (await response.json()) as { metrics: RunMetrics };
+  return body.metrics;
+}
+
 export function RunReportView({ initialRun }: RunReportViewProps) {
   const [run, setRun] = useState(initialRun);
+  const [metrics, setMetrics] = useState<RunMetrics | undefined>(initialRun.metrics);
   const [markdown, setMarkdown] = useState(initialRun.report?.markdown ?? '');
   const [summary, setSummary] = useState(initialRun.report?.summary);
   const [streamDone, setStreamDone] = useState(
@@ -43,6 +54,11 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
 
   useEffect(() => {
     if (streamDone) {
+      void fetchRunMetrics(run.id).then((nextMetrics) => {
+        if (nextMetrics) {
+          setMetrics(nextMetrics);
+        }
+      });
       return;
     }
 
@@ -70,8 +86,13 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
     try {
       const updated = await fetchRun(run.id);
       setRun(updated);
+      setMetrics(updated.metrics);
       setMarkdown(updated.report?.markdown ?? markdown);
       setSummary(updated.report?.summary);
+      const nextMetrics = await fetchRunMetrics(run.id);
+      if (nextMetrics) {
+        setMetrics(nextMetrics);
+      }
     } catch {
       // Keep current UI if refresh fails; approval API already returned status.
     }
@@ -102,6 +123,8 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      <RunCostSummary metrics={metrics} />
 
       {showSkeleton ? (
         <RunReportSkeleton />

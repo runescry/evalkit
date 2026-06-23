@@ -18,7 +18,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 10 | `feature/eval-set` | complete | ground-truth.json, L3 gate ≥ 85% alignment |
 | 11 | `feature/input-ui` | complete | Landing form, recent runs, progressive enhancement |
 | 12 | `feature/slack-chat-sdk` | complete | `/eval` slash command, threaded updates |
-| 13 | `infra/observability` | pending | Spans, `/metrics`, cost on report |
+| 13 | `infra/observability` | complete | Spans, `/metrics`, cost on report |
 | 14 | `feature/auth` | pending | Rate limit middleware, API keys |
 | 15 | `release/v1` | pending | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
 
@@ -115,3 +115,13 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `lib/slack.ts` — signature verification, command parsing, threaded updates
 - [x] `POST /api/slack/eval` — `/eval <url> | <description> [--cases=N]`
 - [x] Unit + contract tests with mocked fetch
+
+## Slice 13 acceptance
+
+- [x] `lib/observability.ts` — OpenTelemetry spans for workflow steps + AI calls; PII scrubbing (`urlDomainOnly`, `hashDescription`)
+- [x] `lib/ai.ts` — `runId` in telemetry metadata; AI call spans + KV metrics aggregation via `recordAiCallWithSpan`
+- [x] `EvalRun.metrics` — per-step cost/latency/token breakdown persisted via `updateRun`
+- [x] `GET /api/runs/[id]/metrics` — per-run metrics JSON; contract test
+- [x] `RunCostSummary` on `/runs/[id]` — cost & latency card on report page
+- [x] Staging cost alert documented in `docs/RUNBOOK.md` (Vercel Observability rule for runs >$1.00)
+- [x] Unit tests for observability helpers; workflow steps wrapped with `observeWorkflowStep`

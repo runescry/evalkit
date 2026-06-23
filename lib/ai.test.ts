@@ -5,6 +5,14 @@ const { generateTextMock } = vi.hoisted(() => ({
   generateTextMock: vi.fn(),
 }));
 
+const observabilityMocks = vi.hoisted(() => ({
+  recordAiCallWithSpan: vi.fn(),
+}));
+
+vi.mock('@/lib/observability', () => ({
+  recordAiCallWithSpan: observabilityMocks.recordAiCallWithSpan,
+}));
+
 vi.mock('ai', () => ({
   generateText: generateTextMock,
   streamText: vi.fn(),
@@ -13,6 +21,7 @@ vi.mock('ai', () => ({
 describe('lib/ai', () => {
   beforeEach(() => {
     generateTextMock.mockReset();
+    observabilityMocks.recordAiCallWithSpan.mockResolvedValue(undefined);
   });
 
   it('routes fast tier to haiku with gemini and sonnet fallbacks', async () => {
@@ -76,6 +85,34 @@ describe('lib/ai', () => {
   it('escalates fast tier fallbacks through gateway.models including sonnet', () => {
     expect(TIER_MODELS.fast.fallbacks).toContain('google/gemini-2.5-flash');
     expect(TIER_MODELS.fast.fallbacks).toContain('anthropic/claude-sonnet-4-6');
+  });
+
+  it('includes runId in telemetry metadata when provided', async () => {
+    generateTextMock.mockResolvedValue({
+      text: 'ok',
+      usage: { inputTokens: 5, outputTokens: 2 },
+      providerMetadata: {},
+    });
+
+    await generateWithTier({
+      tier: 'fast',
+      step: 'generate-test-cases',
+      runId: 'run_telemetry',
+      prompt: 'hello',
+    });
+
+    expect(generateTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        experimental_telemetry: {
+          isEnabled: true,
+          metadata: {
+            evalkitTier: 'fast',
+            evalkitStep: 'generate-test-cases',
+            evalkitRunId: 'run_telemetry',
+          },
+        },
+      }),
+    );
   });
 
   it('pingTier returns ok when model responds with ok', async () => {

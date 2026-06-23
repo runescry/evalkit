@@ -30,7 +30,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 
 ## Production
 
-- [ ] **13** Observability (`infra/observability`)
+- [x] **13** Observability (`infra/observability`)
 - [ ] **14** Auth + rate limits (`feature/auth`)
 - [ ] **15** Release v1 (`release/v1`)
 

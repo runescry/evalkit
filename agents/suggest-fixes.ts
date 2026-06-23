@@ -93,6 +93,7 @@ async function suggestFixesWithAi(
   const result = await generateWithTier({
     tier: 'strong',
     step: 'suggest-fixes',
+    runId,
     system: SUGGEST_FIXES_PROMPT.system,
     prompt: userPrompt,
     output: Output.object({ schema: suggestFixesResponseSchema }),
