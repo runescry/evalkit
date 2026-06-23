@@ -17,7 +17,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 09 | `feature/prompt-fixes` | complete | `PromptFix[]`, diff in approval card |
 | 10 | `feature/eval-set` | complete | ground-truth.json, L3 gate ≥ 85% alignment |
 | 11 | `feature/input-ui` | complete | Landing form, recent runs, progressive enhancement |
-| 12 | `feature/slack-chat-sdk` | pending | `/eval` slash command, threaded updates |
+| 12 | `feature/slack-chat-sdk` | complete | `/eval` slash command, threaded updates |
 | 13 | `infra/observability` | pending | Spans, `/metrics`, cost on report |
 | 14 | `feature/auth` | pending | Rate limit middleware, API keys |
 | 15 | `release/v1` | pending | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
@@ -109,3 +109,9 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] Progressive enhancement — number input works without JS
 - [x] `RecentRuns` — server-rendered list from `listRuns`
 - [x] `GET /api/runs` — recent runs summary API; contract test
+
+## Slice 12 acceptance
+
+- [x] `lib/slack.ts` — signature verification, command parsing, threaded updates
+- [x] `POST /api/slack/eval` — `/eval <url> | <description> [--cases=N]`
+- [x] Unit + contract tests with mocked fetch

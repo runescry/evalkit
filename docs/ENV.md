@@ -12,6 +12,7 @@ Canonical reference. Slice 00b generates `.env.example` from this table.
 | `SLACK_SIGNING_SECRET` | Slice 12 | Slack app signing secret |
 | `SLACK_CLIENT_ID` | Optional | Multi-workspace OAuth |
 | `SLACK_CLIENT_SECRET` | Optional | Multi-workspace OAuth |
+| `NEXT_PUBLIC_APP_URL` | Optional | Public app origin for Slack run links (falls back to `VERCEL_URL`) |
 
 ## Local development
 

@@ -26,10 +26,14 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 - [x] **09** Prompt fix suggester (`feature/prompt-fixes`)
 - [x] **10** Eval set + L3 gate (`feature/eval-set`)
 - [x] **11** Input UI (`feature/input-ui`)
-- [ ] **12** Slack delivery (`feature/slack-chat-sdk`)
+- [x] **12** Slack delivery (`feature/slack-chat-sdk`)
 
 ## Production
 
 - [ ] **13** Observability (`infra/observability`)
 - [ ] **14** Auth + rate limits (`feature/auth`)
 - [ ] **15** Release v1 (`release/v1`)
+
+## Future / backlog
+
+- [ ] **Dual-tier eval comparison** — extend L3 eval to run scorer against both `fast` and `strong` tiers via `lib/ai.ts`, report alignment deltas and cost/latency side-by-side; gate on minimum alignment per tier plus max regression between tiers.
