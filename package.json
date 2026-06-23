@@ -6,6 +6,12 @@
   "engines": {
     "node": ">=22"
   },
+  "overrides": {
+    "undici": "7.28.0",
+    "@swc/helpers": "0.5.23",
+    "chokidar": "5.0.0",
+    "readdirp": "5.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
