@@ -22,3 +22,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 06: `agents/score-results.ts` strong-tier rubric scoring (4 dimensions, flag < 14), incremental KV updates, prompt hash on run, unit + integration tests with mocked AI
 - Slice 07: `agents/build-report.ts` streaming markdown report, `GET /api/runs/[id]/stream` SSE, `/runs/[id]` UI with skeleton + `lib/sse.ts` helper
 - Slice 08: `POST /api/runs/[id]/approve` resumes workflow approval hook, `ApprovalCard` on run page
+- Slice 09: `agents/suggest-fixes.ts` structured prompt fixes with unified diffs, `FixSuggestions` UI, workflow `applyFixesStep` wired

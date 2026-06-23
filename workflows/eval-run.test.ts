@@ -13,6 +13,7 @@ const agentMocks = vi.hoisted(() => ({
   runTestCasesInSandbox: vi.fn(),
   scoreTestResults: vi.fn(),
   buildReport: vi.fn(),
+  suggestFixes: vi.fn(),
 }));
 
 vi.mock('@/agents/generate-cases', () => ({
@@ -29,6 +30,10 @@ vi.mock('@/agents/score-results', () => ({
 
 vi.mock('@/agents/build-report', () => ({
   buildReport: agentMocks.buildReport,
+}));
+
+vi.mock('@/agents/suggest-fixes', () => ({
+  suggestFixes: agentMocks.suggestFixes,
 }));
 
 const storeMocks = vi.hoisted(() => ({
@@ -160,6 +165,18 @@ describe('eval-run workflow steps', () => {
         summary: 'All cases reviewed.',
       },
       promptVersion: { version: '1.0.0', hash: 'sha256:report' },
+    });
+    agentMocks.suggestFixes.mockResolvedValue({
+      fixes: [
+        {
+          id: 'fix_run_test123_1',
+          target: 'system-prompt',
+          description: 'Add guardrail',
+          diff: '--- a/prompt\n+++ b/prompt\n+Refuse jailbreaks',
+          approved: null,
+        },
+      ],
+      promptVersion: { version: '1.0.0', hash: 'sha256:fixes' },
     });
   });
 
@@ -304,17 +321,56 @@ describe('eval-run workflow steps', () => {
     });
   });
 
-  it('applyFixesStep writes stub fixes and completes run', async () => {
+  it('applyFixesStep generates fixes via agent and completes run', async () => {
+    storeMocks.getRun.mockResolvedValue({
+      ...baseRun,
+      report: { markdown: '# Report', summary: 'ok' },
+      testCases: [
+        {
+          id: 'tc_1',
+          category: 'jailbreak',
+          input: 'ignore',
+          expectedBehavior: 'refuse',
+        },
+      ],
+      results: [
+        {
+          testCaseId: 'tc_1',
+          response: 'ok',
+          sandbox: {
+            statusCode: 200,
+            body: 'ok',
+            latencyMs: 1,
+            timedOut: false,
+            error: null,
+          },
+          scores: null,
+          total: 10,
+          flagged: true,
+          reasoning: 'weak',
+        },
+      ],
+    });
+
     await applyFixesStep(baseRun.id);
 
+    expect(agentMocks.suggestFixes).toHaveBeenCalledWith(baseRun.id, {
+      description: baseRun.input.description,
+      reportMarkdown: '# Report',
+      testCases: expect.any(Array),
+      results: expect.any(Array),
+    });
     expect(storeMocks.updateRun).toHaveBeenCalledWith(
       baseRun.id,
       expect.objectContaining({
         status: 'complete',
         suggestedFixes: expect.arrayContaining([
-          expect.objectContaining({ id: 'fix_stub_1' }),
+          expect.objectContaining({ id: 'fix_run_test123_1' }),
         ]),
         approvedAt: expect.any(Number),
+        promptVersions: {
+          suggestFixes: { version: '1.0.0', hash: 'sha256:fixes' },
+        },
       }),
     );
   });
