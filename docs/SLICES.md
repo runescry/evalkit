@@ -16,7 +16,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 08 | `feature/approval-gate` | complete | Workflow hook, approve/reject APIs, UI card |
 | 09 | `feature/prompt-fixes` | complete | `PromptFix[]`, diff in approval card |
 | 10 | `feature/eval-set` | complete | ground-truth.json, L3 gate ≥ 85% alignment |
-| 11 | `feature/input-ui` | pending | Landing form, recent runs, progressive enhancement |
+| 11 | `feature/input-ui` | complete | Landing form, recent runs, progressive enhancement |
 | 12 | `feature/slack-chat-sdk` | pending | `/eval` slash command, threaded updates |
 | 13 | `infra/observability` | pending | Spans, `/metrics`, cost on report |
 | 14 | `feature/auth` | pending | Rate limit middleware, API keys |
@@ -102,3 +102,10 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `evals/ground-truth.json` — flagged labels for mocked rubric outputs
 - [x] `lib/eval-alignment.ts` + `evals/run-evals.ts` — alignment rate vs ground truth
 - [x] L3 gate ≥ 85%; `npm run test:eval` in gates; CI blocks on failure
+
+## Slice 11 acceptance
+
+- [x] Landing page form — URL, description, case count (`EvalStartForm` + server action)
+- [x] Progressive enhancement — number input works without JS
+- [x] `RecentRuns` — server-rendered list from `listRuns`
+- [x] `GET /api/runs` — recent runs summary API; contract test

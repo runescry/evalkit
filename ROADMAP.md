@@ -25,7 +25,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 - [x] **08** Approval gate (`feature/approval-gate`)
 - [x] **09** Prompt fix suggester (`feature/prompt-fixes`)
 - [x] **10** Eval set + L3 gate (`feature/eval-set`)
-- [ ] **11** Input UI (`feature/input-ui`)
+- [x] **11** Input UI (`feature/input-ui`)
 - [ ] **12** Slack delivery (`feature/slack-chat-sdk`)
 
 ## Production
