@@ -2,6 +2,8 @@ import { EvalStartForm } from '@/components/eval-start-form';
 import { RecentRuns } from '@/components/recent-runs';
 import { listRuns } from '@/lib/store';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const runs = await listRuns(8);
 
