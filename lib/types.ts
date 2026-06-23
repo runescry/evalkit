@@ -74,6 +74,23 @@ export const promptVersionSchema = z.object({
   hash: z.string().min(1),
 });
 
+export const stepMetricsSchema = z.object({
+  step: z.string().min(1),
+  latencyMs: z.number().nonnegative(),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  totalCost: z.number().nonnegative(),
+  callCount: z.number().int().nonnegative(),
+});
+
+export const runMetricsSchema = z.object({
+  steps: z.array(stepMetricsSchema),
+  totalCost: z.number().nonnegative(),
+  totalLatencyMs: z.number().nonnegative(),
+  aiCallCount: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
+});
+
 export const evalRunSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
@@ -86,6 +103,7 @@ export const evalRunSchema = z.object({
   approvedAt: z.number().int().nonnegative().nullable(),
   error: z.string().nullable(),
   promptVersions: z.record(z.string(), promptVersionSchema).optional(),
+  metrics: runMetricsSchema.optional(),
 });
 
 /** Fields agents may patch via `updateRun`. */
@@ -99,6 +117,7 @@ export const evalRunUpdateSchema = evalRunSchema
     approvedAt: true,
     error: true,
     promptVersions: true,
+    metrics: true,
   })
   .partial()
   .strict();
@@ -112,5 +131,7 @@ export type Report = z.infer<typeof reportSchema>;
 export type PromptFix = z.infer<typeof promptFixSchema>;
 export type EvalRunInput = z.infer<typeof evalRunInputSchema>;
 export type RunStatus = z.infer<typeof runStatusSchema>;
+export type StepMetrics = z.infer<typeof stepMetricsSchema>;
+export type RunMetrics = z.infer<typeof runMetricsSchema>;
 export type EvalRun = z.infer<typeof evalRunSchema>;
 export type EvalRunUpdate = z.infer<typeof evalRunUpdateSchema>;

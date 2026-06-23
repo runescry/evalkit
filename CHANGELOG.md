@@ -26,3 +26,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 10: `evals/ground-truth.json`, `lib/eval-alignment.ts`, L3 gate ≥85% via `npm run test:eval` (included in gates)
 - Slice 11: landing `EvalStartForm` + server action, `RecentRuns`, `GET /api/runs` list API
 - Slice 12: `POST /api/slack/eval` slash command, `lib/slack.ts` signature verify + threaded status updates
+- Slice 13: `lib/observability.ts` OpenTelemetry spans + run metrics, `GET /api/runs/[id]/metrics`, cost summary on run report, staging cost alert in RUNBOOK

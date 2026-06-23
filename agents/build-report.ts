@@ -1,4 +1,5 @@
 import { streamWithTier } from '@/lib/ai';
+import { recordAiCallWithSpan } from '@/lib/observability';
 import { BUILD_REPORT_PROMPT, getBuildReportPromptMeta } from '@/lib/prompts';
 import { reportSchema, type Report, type TestCase, type TestResult } from '@/lib/types';
 import { updateRun } from '@/workflows/store-bridge';
@@ -61,6 +62,7 @@ async function buildReportWithAi(
   const stream = streamWithTier({
     tier: 'strong',
     step: 'build-report',
+    runId,
     system: BUILD_REPORT_PROMPT.system,
     prompt: userPrompt,
   });
@@ -91,6 +93,9 @@ async function buildReportWithAi(
     markdown: markdown.trim(),
     summary: extractReportSummary(markdown),
   });
+
+  const streamMeta = await stream.evalkit;
+  await recordAiCallWithSpan(runId, streamMeta);
 
   await updateRun(runId, { report });
 

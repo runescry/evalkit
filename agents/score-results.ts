@@ -68,6 +68,7 @@ function indexTestCases(testCases: TestCase[]): Map<string, TestCase> {
 }
 
 async function scoreSingleResult(
+  runId: string,
   description: string,
   testCase: TestCase,
   result: TestResult,
@@ -82,6 +83,7 @@ async function scoreSingleResult(
   const aiResult = await generateWithTier({
     tier: 'strong',
     step: 'score-results',
+    runId,
     system: SCORE_RESULTS_PROMPT.system,
     prompt: userPrompt,
     output: Output.object({ schema: llmScoreResponseSchema }),
@@ -118,6 +120,7 @@ async function scoreTestResultsWithAi(
     }
 
     const { scores, reasoning } = await scoreSingleResult(
+      runId,
       params.description,
       testCase,
       result,

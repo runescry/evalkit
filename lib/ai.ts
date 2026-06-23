@@ -3,6 +3,7 @@ import {
   generateText,
   streamText,
 } from 'ai';
+import { recordAiCallWithSpan } from '@/lib/observability';
 
 export type ModelTier = 'fast' | 'strong';
 
@@ -58,14 +59,15 @@ function gatewayOptions(tier: ModelTier, step: string): { gateway: GatewayProvid
   };
 }
 
-function telemetryOptions(tier: ModelTier, step: string) {
+function telemetryOptions(tier: ModelTier, step: string, runId?: string) {
   return {
     experimental_telemetry: {
       isEnabled: true,
       metadata: {
         evalkitTier: tier,
         evalkitStep: step,
-      } satisfies EvalkitTelemetry,
+        ...(runId ? { evalkitRunId: runId } : {}),
+      } satisfies EvalkitTelemetry & { evalkitRunId?: string },
     },
   };
 }
@@ -98,6 +100,7 @@ function extractCallMeta(
 export type GenerateWithTierParams = {
   tier: ModelTier;
   step: string;
+  runId?: string;
   prompt: string;
   system?: string;
   maxRetries?: number;
@@ -107,7 +110,7 @@ export type GenerateWithTierParams = {
 export type GenerateWithTierResult = Awaited<ReturnType<typeof generateWithTierInternal>>;
 
 async function generateWithTierInternal(params: GenerateWithTierParams) {
-  const { tier, step, prompt, system, maxRetries = 3, output } = params;
+  const { tier, step, runId, prompt, system, maxRetries = 3, output } = params;
   const { primary } = TIER_MODELS[tier];
   const started = Date.now();
 
@@ -118,18 +121,22 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
     maxRetries,
     ...(output ? { output } : {}),
     providerOptions: gatewayOptions(tier, step) as Parameters<typeof generateText>[0]['providerOptions'],
-    ...telemetryOptions(tier, step),
+    ...telemetryOptions(tier, step, runId),
   });
 
-  return Object.assign(result, {
-    evalkit: extractCallMeta(
-      tier,
-      step,
-      Date.now() - started,
-      result.providerMetadata as GatewayProviderMetadata,
-      result.usage,
-    ),
-  });
+  const evalkit = extractCallMeta(
+    tier,
+    step,
+    Date.now() - started,
+    result.providerMetadata as GatewayProviderMetadata,
+    result.usage,
+  );
+
+  if (runId) {
+    await recordAiCallWithSpan(runId, evalkit);
+  }
+
+  return Object.assign(result, { evalkit });
 }
 
 export async function generateWithTier(params: GenerateWithTierParams): Promise<GenerateWithTierResult> {
@@ -141,7 +148,7 @@ export type StreamWithTierParams = GenerateWithTierParams;
 export type StreamWithTierResult = ReturnType<typeof streamWithTier>;
 
 export function streamWithTier(params: StreamWithTierParams) {
-  const { tier, step, prompt, system, maxRetries = 3 } = params;
+  const { tier, step, runId, prompt, system, maxRetries = 3 } = params;
   const { primary } = TIER_MODELS[tier];
   const started = Date.now();
 
@@ -151,7 +158,7 @@ export function streamWithTier(params: StreamWithTierParams) {
     system,
     maxRetries,
     providerOptions: gatewayOptions(tier, step) as Parameters<typeof streamText>[0]['providerOptions'],
-    ...telemetryOptions(tier, step),
+    ...telemetryOptions(tier, step, runId),
   });
 
   const evalkit = Promise.resolve(result.providerMetadata).then((metadata) =>

@@ -98,6 +98,7 @@ async function generateTestCasesWithAi(
   const result = await generateWithTier({
     tier: 'fast',
     step: 'generate-test-cases',
+    runId,
     system: GENERATE_CASES_PROMPT.system,
     prompt: userPrompt,
     output: Output.object({ schema: generateTestCasesResponseSchema }),
