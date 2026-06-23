@@ -1,4 +1,5 @@
 import { FatalError, RetryableError, defineHook, getStepMetadata } from 'workflow';
+import { buildReport } from '@/agents/build-report';
 import { generateTestCases } from '@/agents/generate-cases';
 import { runTestCasesInSandbox } from '@/agents/run-sandbox';
 import { scoreTestResults } from '@/agents/score-results';
@@ -95,13 +96,27 @@ export async function buildReportStep(runId: string): Promise<void> {
   'use step';
 
   try {
+    const run = await getRun(runId);
+    if (!run) {
+      throw new FatalError(`Run not found: ${runId}`);
+    }
+
+    const { promptVersion } = await buildReport(runId, {
+      description: run.input.description,
+      testCases: run.testCases,
+      results: run.results,
+    });
+
     await updateRun(runId, {
-      report: {
-        markdown: '# Eval report (stub)\n\nReport streaming lands in Slice 07.',
-        summary: 'Stub report',
+      promptVersions: {
+        ...run.promptVersions,
+        buildReport: promptVersion,
       },
     });
   } catch (error) {
+    if (error instanceof FatalError) {
+      throw error;
+    }
     rethrowWithBackoff(error, 'build-report');
   }
 }

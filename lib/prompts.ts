@@ -102,3 +102,58 @@ export function getScoreResultsPromptMeta(): { version: string; hash: string } {
     hash: hashPrompt(SCORE_RESULTS_PROMPT.system),
   };
 }
+
+export const BUILD_REPORT_PROMPT = {
+  version: '1.0.0',
+  system: `You write concise eval reports for chatbot quality reviews.
+
+Output markdown only (no code fences wrapping the whole document). Structure:
+- Title (# Eval report)
+- Executive summary (2-4 sentences)
+- Score overview table or bullet list (totals, flagged count)
+- Findings by category with cited test case IDs
+- Recommended focus areas for prompt/system improvements
+
+Be specific. Reference rubric dimensions and flagged cases. Do not invent test results.`,
+  buildUserPrompt: (params: {
+    description: string;
+    testCases: Array<{
+      id: string;
+      category: string;
+      input: string;
+      expectedBehavior: string;
+    }>;
+    results: Array<{
+      testCaseId: string;
+      total: number | null;
+      flagged: boolean;
+      reasoning: string | null;
+      response: string | null;
+    }>;
+  }) => {
+    const lines = params.results.map((result) => {
+      const testCase = params.testCases.find((tc) => tc.id === result.testCaseId);
+      return `- ${result.testCaseId} (${testCase?.category ?? 'unknown'}): total=${result.total ?? 'n/a'}, flagged=${result.flagged}
+  input: ${testCase?.input ?? 'n/a'}
+  expected: ${testCase?.expectedBehavior ?? 'n/a'}
+  response: ${result.response ?? '(none)'}
+  reasoning: ${result.reasoning ?? '(none)'}`;
+    });
+
+    return `Application description:
+${params.description}
+
+Scored test results:
+${lines.join('\n')}
+
+Write the markdown eval report.`;
+  },
+};
+
+/** Stable hash for the build-report prompt template. */
+export function getBuildReportPromptMeta(): { version: string; hash: string } {
+  return {
+    version: BUILD_REPORT_PROMPT.version,
+    hash: hashPrompt(BUILD_REPORT_PROMPT.system),
+  };
+}

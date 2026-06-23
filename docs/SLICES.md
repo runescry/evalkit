@@ -12,7 +12,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 04 | `feature/test-case-generator` | complete | 6 categories, Zod output, prompt hash |
 | 05 | `feature/sandbox-runner` | complete | Isolated sandbox per case, 10s timeout, fan-out 5 |
 | 06 | `feature/rubric-scorer` | complete | 4-dimension scores, flag < 14 |
-| 07 | `feature/report-stream` | pending | SSE report, `/runs/[id]`, mobile layout |
+| 07 | `feature/report-stream` | complete | SSE report, `/runs/[id]`, mobile layout |
 | 08 | `feature/approval-gate` | pending | Workflow hook, approve/reject APIs, UI card |
 | 09 | `feature/prompt-fixes` | pending | `PromptFix[]`, diff in approval card |
 | 10 | `feature/eval-set` | pending | ground-truth.json, L3 gate ≥ 85% alignment |
@@ -74,3 +74,12 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] Each scored `TestResult` persisted incrementally via `updateRun` for UI progress
 - [x] `lib/prompts.ts` — versioned scorer template; `promptVersions.scoreResults` hash on run
 - [x] Workflow `scoreResultsStep` wired to agent; unit tests mock `lib/ai` — assert schema + flag behavior
+
+## Slice 07 acceptance
+
+- [x] `agents/build-report.ts` — strong tier stream via `streamWithTier`, incremental KV markdown updates
+- [x] `lib/prompts.ts` — versioned report template; `promptVersions.buildReport` hash on run
+- [x] `GET /api/runs/[id]/stream` — SSE progress + report events; contract tests
+- [x] `lib/sse.ts` — shared client subscribe helper (no inline parsing in components)
+- [x] `/runs/[id]` page — skeleton UI, responsive layout, streams report until `awaiting_approval`
+- [x] Workflow `buildReportStep` wired to agent; unit + integration tests with mocks

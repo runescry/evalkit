@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resumeHook, start } from 'workflow/api';
 import { waitForHook } from '@workflow/vitest';
+import type { BuildReportParams, BuildReportResult } from '@/agents/build-report';
 import type { GenerateTestCasesResult } from '@/agents/generate-cases';
 import type { RunSandboxParams } from '@/agents/run-sandbox';
 import { buildUnscoredTestResult } from '@/agents/run-sandbox';
@@ -66,6 +67,22 @@ async function stubScoreResults(
   };
 }
 
+async function stubBuildReport(
+  runId: string,
+  params: BuildReportParams,
+): Promise<BuildReportResult> {
+  const report = {
+    markdown: `# Eval report\n\nReviewed ${params.results.length} results.`,
+    summary: `Reviewed ${params.results.length} results.`,
+  };
+  await memoryStore.updateRun(runId, { report });
+
+  return {
+    report,
+    promptVersion: { version: '1.0.0', hash: 'sha256:integration-report' },
+  };
+}
+
 describe('evalRunWorkflow resume', () => {
   beforeEach(() => {
     memoryStore.reset();
@@ -76,6 +93,7 @@ describe('evalRunWorkflow resume', () => {
     globalThis.__EVALKIT_GENERATE_TEST_CASES__ = stubGenerateTestCases;
     globalThis.__EVALKIT_RUN_SANDBOX__ = stubRunSandbox;
     globalThis.__EVALKIT_SCORE_RESULTS__ = stubScoreResults;
+    globalThis.__EVALKIT_BUILD_REPORT__ = stubBuildReport;
   });
 
   afterEach(() => {
@@ -83,6 +101,7 @@ describe('evalRunWorkflow resume', () => {
     delete globalThis.__EVALKIT_GENERATE_TEST_CASES__;
     delete globalThis.__EVALKIT_RUN_SANDBOX__;
     delete globalThis.__EVALKIT_SCORE_RESULTS__;
+    delete globalThis.__EVALKIT_BUILD_REPORT__;
   });
 
   it('resumes after approval hook and completes with stub fixes', async () => {
@@ -114,7 +133,7 @@ describe('evalRunWorkflow resume', () => {
       hash: 'sha256:integration-score',
     });
     expect(result.report).toMatchObject({
-      markdown: expect.stringContaining('Slice 07'),
+      markdown: expect.stringContaining('Eval report'),
     });
     expect(await workflowRun.status).toBe('completed');
   });

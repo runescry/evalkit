@@ -12,6 +12,7 @@ const agentMocks = vi.hoisted(() => ({
   generateTestCases: vi.fn(),
   runTestCasesInSandbox: vi.fn(),
   scoreTestResults: vi.fn(),
+  buildReport: vi.fn(),
 }));
 
 vi.mock('@/agents/generate-cases', () => ({
@@ -24,6 +25,10 @@ vi.mock('@/agents/run-sandbox', () => ({
 
 vi.mock('@/agents/score-results', () => ({
   scoreTestResults: agentMocks.scoreTestResults,
+}));
+
+vi.mock('@/agents/build-report', () => ({
+  buildReport: agentMocks.buildReport,
 }));
 
 const storeMocks = vi.hoisted(() => ({
@@ -149,6 +154,13 @@ describe('eval-run workflow steps', () => {
       ],
       promptVersion: { version: '1.0.0', hash: 'sha256:score' },
     });
+    agentMocks.buildReport.mockResolvedValue({
+      report: {
+        markdown: '# Eval report\n\nAll cases reviewed.',
+        summary: 'All cases reviewed.',
+      },
+      promptVersion: { version: '1.0.0', hash: 'sha256:report' },
+    });
   });
 
   it('generateTestCasesStep marks running and persists generated cases with prompt hash', async () => {
@@ -241,17 +253,48 @@ describe('eval-run workflow steps', () => {
     });
   });
 
-  it('buildReportStep writes stub markdown report', async () => {
+  it('buildReportStep streams report via agent and stores prompt hash', async () => {
+    storeMocks.getRun.mockResolvedValue({
+      ...baseRun,
+      testCases: [
+        {
+          id: 'tc_1',
+          category: 'edge_case',
+          input: 'hello',
+          expectedBehavior: 'respond',
+        },
+      ],
+      results: [
+        {
+          testCaseId: 'tc_1',
+          response: 'hi',
+          sandbox: {
+            statusCode: 200,
+            body: 'hi',
+            latencyMs: 1,
+            timedOut: false,
+            error: null,
+          },
+          scores: null,
+          total: 18,
+          flagged: false,
+          reasoning: 'ok',
+        },
+      ],
+    });
+
     await buildReportStep(baseRun.id);
 
-    expect(storeMocks.updateRun).toHaveBeenCalledWith(
-      baseRun.id,
-      expect.objectContaining({
-        report: expect.objectContaining({
-          markdown: expect.stringContaining('Slice 07'),
-        }),
-      }),
-    );
+    expect(agentMocks.buildReport).toHaveBeenCalledWith(baseRun.id, {
+      description: baseRun.input.description,
+      testCases: expect.any(Array),
+      results: expect.any(Array),
+    });
+    expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, {
+      promptVersions: {
+        buildReport: { version: '1.0.0', hash: 'sha256:report' },
+      },
+    });
   });
 
   it('markAwaitingApprovalStep updates status', async () => {

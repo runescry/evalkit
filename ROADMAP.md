@@ -21,7 +21,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 
 ## User-facing
 
-- [ ] **07** Report stream + UI (`feature/report-stream`)
+- [x] **07** Report stream + UI (`feature/report-stream`)
 - [ ] **08** Approval gate (`feature/approval-gate`)
 - [ ] **09** Prompt fix suggester (`feature/prompt-fixes`)
 - [ ] **10** Eval set + L3 gate (`feature/eval-set`)
