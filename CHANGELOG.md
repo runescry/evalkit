@@ -23,3 +23,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 07: `agents/build-report.ts` streaming markdown report, `GET /api/runs/[id]/stream` SSE, `/runs/[id]` UI with skeleton + `lib/sse.ts` helper
 - Slice 08: `POST /api/runs/[id]/approve` resumes workflow approval hook, `ApprovalCard` on run page
 - Slice 09: `agents/suggest-fixes.ts` structured prompt fixes with unified diffs, `FixSuggestions` UI, workflow `applyFixesStep` wired
+- Slice 10: `evals/ground-truth.json`, `lib/eval-alignment.ts`, L3 gate ≥85% via `npm run test:eval` (included in gates)

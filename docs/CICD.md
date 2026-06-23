@@ -65,7 +65,7 @@ Workflows run on **every push and pull request** (except where noted).
 |----------|-----|---------------|
 | [CI](../.github/workflows/ci.yml) | Quality gates | Yes |
 | [CI](../.github/workflows/ci.yml) | Dependency audit (`npm audit --audit-level=high`) | Yes |
-| [CI](../.github/workflows/ci.yml) | L3 eval alignment | Main only; advisory until Slice 10 |
+| [CI](../.github/workflows/ci.yml) | L3 eval alignment | Main only; blocks on failure (≥85% scorer alignment) |
 | [Secret scan](../.github/workflows/secret-scan.yml) | Gitleaks | Yes |
 | [CodeQL](../.github/workflows/codeql.yml) | SAST (JavaScript/TypeScript) | Yes on PRs to `main` |
 | [Dependency review](../.github/workflows/dependency-review.yml) | New dependency risk | PRs only |

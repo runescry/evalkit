@@ -15,7 +15,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 07 | `feature/report-stream` | complete | SSE report, `/runs/[id]`, mobile layout |
 | 08 | `feature/approval-gate` | complete | Workflow hook, approve/reject APIs, UI card |
 | 09 | `feature/prompt-fixes` | complete | `PromptFix[]`, diff in approval card |
-| 10 | `feature/eval-set` | pending | ground-truth.json, L3 gate ≥ 85% alignment |
+| 10 | `feature/eval-set` | complete | ground-truth.json, L3 gate ≥ 85% alignment |
 | 11 | `feature/input-ui` | pending | Landing form, recent runs, progressive enhancement |
 | 12 | `feature/slack-chat-sdk` | pending | `/eval` slash command, threaded updates |
 | 13 | `infra/observability` | pending | Spans, `/metrics`, cost on report |
@@ -96,3 +96,9 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `lib/prompts.ts` — versioned suggest-fixes template; `promptVersions.suggestFixes` hash on run
 - [x] Workflow `applyFixesStep` wired to agent (replaces stub fixes)
 - [x] `FixSuggestions` component — unified diff display below approval card
+
+## Slice 10 acceptance
+
+- [x] `evals/ground-truth.json` — flagged labels for mocked rubric outputs
+- [x] `lib/eval-alignment.ts` + `evals/run-evals.ts` — alignment rate vs ground truth
+- [x] L3 gate ≥ 85%; `npm run test:eval` in gates; CI blocks on failure
