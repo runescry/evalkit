@@ -23,6 +23,8 @@ export const sandboxResultSchema = z.object({
   latencyMs: z.number().nonnegative().nullable(),
   timedOut: z.boolean(),
   error: z.string().nullable(),
+  /** True when sandbox isolation failed and the response came from a direct HTTP POST. */
+  unverified: z.boolean().optional(),
 });
 
 export const rubricScoresSchema = z.object({

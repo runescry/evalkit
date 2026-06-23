@@ -67,3 +67,27 @@ Format: ADR-lite. New decisions append at the bottom.
 **Context:** Auto-applying prompt changes is unsafe for enterprise users.
 
 **Decision:** Workflow suspends at `awaiting_approval`; fixes require explicit POST `/approve`. AI SDK `needsApproval` on apply tool as secondary guard.
+
+---
+
+## ADR-007: Sandbox fallback with unverified flag
+
+**Status:** Accepted (v1)
+
+**Context:** Vercel Sandbox creation or execution can fail (quota, OIDC, regional outage). Hard-failing the entire eval run wastes generated test cases and blocks scoring.
+
+**Decision:** On sandbox infra failure, fall back to a direct HTTP POST to the target URL with the same JSON payload (`{ message }`) and timeout. Mark `sandbox.unverified: true` on those results so reports and operators know isolation was not guaranteed.
+
+**Consequences:** Fallback responses may differ from sandboxed ones (e.g. IP allowlists, SSRF posture). Scoring still proceeds; operators should treat unverified results with lower trust. Implemented in `agents/run-sandbox.ts`.
+
+---
+
+## ADR-008: Auth deferred post-v1
+
+**Status:** Deferred (Slice 14 backlog)
+
+**Context:** API keys and rate limiting (Slice 14) add operational overhead before first production users validate the core eval loop.
+
+**Decision:** Ship v1 without auth middleware. Revisit rate limits and API keys when exposing EvalKit beyond trusted workspaces.
+
+**Consequences:** `/api/runs` and workflow triggers are unauthenticated in v1 — deploy behind Vercel deployment protection or private networking until Slice 14 lands.

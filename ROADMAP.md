@@ -31,9 +31,11 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 ## Production
 
 - [x] **13** Observability (`infra/observability`)
-- [ ] **14** Auth + rate limits (`feature/auth`)
-- [ ] **15** Release v1 (`release/v1`)
+- [ ] **14** Auth + rate limits (`feature/auth`) — **deferred / backlog**
+- [x] **15** Release v1 (`release/v1`)
 
 ## Future / backlog
+
+- [ ] **14** Auth + rate limits — API keys, middleware rate limiting (deferred from v1; see ADR-008)
 
 - [ ] **Dual-tier eval comparison** — extend L3 eval to run scorer against both `fast` and `strong` tiers via `lib/ai.ts`, report alignment deltas and cost/latency side-by-side; gate on minimum alignment per tier plus max regression between tiers.

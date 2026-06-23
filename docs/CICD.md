@@ -110,6 +110,22 @@ curl -s https://<your-production-domain>/api/health | jq
 
 Expect `healthy: true` when AI Gateway credits and env vars are configured.
 
+### Production environment checklist
+
+Set these in Vercel → **Settings → Environment Variables** for **Production** (and Preview if you test Slack or sandboxes on previews):
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `AI_GATEWAY_API_KEY` | Yes | All LLM calls via AI Gateway |
+| `KV_REST_API_URL` | Yes | Run persistence (Upstash REST) |
+| `KV_REST_API_TOKEN` | Yes | Run persistence |
+| `VERCEL_OIDC_TOKEN` | Auto in Vercel | Sandbox isolation (injected by platform) |
+| `SLACK_BOT_TOKEN` | For `/eval` | Slack bot token |
+| `SLACK_SIGNING_SECRET` | For `/eval` | Slack request signature verification |
+| `NEXT_PUBLIC_APP_URL` | Optional | Canonical origin for Slack run links |
+
+Full descriptions: [ENV.md](./ENV.md). After first production deploy, confirm `/api/health` and run a smoke eval from the landing page.
+
 ## What CI does *not* do
 
 - **No live AI Gateway calls in unit/contract tests** — mocks only (`lib/test/mock-ai.ts`)

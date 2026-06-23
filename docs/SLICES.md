@@ -19,8 +19,8 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 11 | `feature/input-ui` | complete | Landing form, recent runs, progressive enhancement |
 | 12 | `feature/slack-chat-sdk` | complete | `/eval` slash command, threaded updates |
 | 13 | `infra/observability` | complete | Spans, `/metrics`, cost on report |
-| 14 | `feature/auth` | pending | Rate limit middleware, API keys |
-| 15 | `release/v1` | pending | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
+| 14 | `feature/auth` | deferred | Rate limit middleware, API keys (post-v1 backlog) |
+| 15 | `release/v1` | complete | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
 
 ## Per-slice test requirements
 
@@ -125,3 +125,14 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `RunCostSummary` on `/runs/[id]` — cost & latency card on report page
 - [x] Staging cost alert documented in `docs/RUNBOOK.md` (Vercel Observability rule for runs >$1.00)
 - [x] Unit tests for observability helpers; workflow steps wrapped with `observeWorkflowStep`
+
+## Slice 15 acceptance
+
+- [x] `app/error.tsx`, `app/global-error.tsx`, `app/runs/[id]/error.tsx` — user-friendly fallback UI with retry where appropriate
+- [x] Sandbox fallback — direct HTTP POST on sandbox failure; `sandbox.unverified: true` in `lib/types.ts` + `agents/run-sandbox.ts`
+- [x] Unit tests for fallback path (mock sandbox failure → direct fetch)
+- [x] `README.md` — v1 architecture summary, <15 min setup, env link, `npm run test:eval`, deploy + gates
+- [x] `CHANGELOG.md` — `## [1.0.0] - 2026-06-23`; `package.json` version `1.0.0`
+- [x] `docs/DECISIONS.md` — ADR-007 (sandbox fallback), ADR-008 (auth deferred)
+- [x] Production env checklist in `README.md` and `docs/CICD.md`
+- [x] `ROADMAP.md` + this file — Slice 15 complete; Slice 14 deferred
