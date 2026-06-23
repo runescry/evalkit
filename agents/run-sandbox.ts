@@ -85,6 +85,59 @@ export function parseSandboxCommandOutput(stdout: string): SandboxCommandPayload
   };
 }
 
+/** Direct HTTP POST — same payload as the sandbox script. See ADR-007 in docs/DECISIONS.md. */
+export async function executeDirectHttpRequest(
+  targetUrl: string,
+  message: string,
+  timeoutMs: number = SANDBOX_TIMEOUT_MS,
+): Promise<SandboxCommandPayload> {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message }),
+      signal: controller.signal,
+    });
+    const body = await res.text();
+    return {
+      statusCode: res.status,
+      body,
+      latencyMs: Date.now() - started,
+      timedOut: false,
+      error: null,
+    };
+  } catch (err) {
+    const timedOut = err instanceof Error && err.name === 'AbortError';
+    return {
+      statusCode: null,
+      body: null,
+      latencyMs: Date.now() - started,
+      timedOut,
+      error: timedOut ? 'Request timed out' : err instanceof Error ? err.message : String(err),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function payloadToSandboxResult(
+  payload: SandboxCommandPayload,
+  unverified: boolean,
+): SandboxResult {
+  return {
+    statusCode: payload.statusCode,
+    body: payload.body,
+    latencyMs: payload.latencyMs,
+    timedOut: payload.timedOut,
+    error: payload.error,
+    unverified,
+  };
+}
+
 export function buildUnscoredTestResult(
   testCaseId: string,
   sandbox: SandboxResult,
@@ -111,7 +164,6 @@ export async function runTestCaseInSandbox(params: RunSandboxParams): Promise<Te
 
 async function runTestCaseInVercelSandbox(params: RunSandboxParams): Promise<TestResult> {
   const { targetUrl, testCase } = params;
-  const domain = targetDomain(targetUrl);
   let sandbox: Sandbox | null = null;
 
   try {
@@ -132,28 +184,15 @@ async function runTestCaseInVercelSandbox(params: RunSandboxParams): Promise<Tes
 
     const stdout = await finished.stdout();
     const payload = parseSandboxCommandOutput(stdout);
-    const sandboxResult: SandboxResult = {
-      statusCode: payload.statusCode,
-      body: payload.body,
-      latencyMs: payload.latencyMs,
-      timedOut: payload.timedOut,
-      error: payload.error,
-    };
+    const sandboxResult = payloadToSandboxResult(payload, false);
 
     return buildUnscoredTestResult(testCase.id, sandboxResult, payload.body);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return buildUnscoredTestResult(
-      testCase.id,
-      {
-        statusCode: null,
-        body: null,
-        latencyMs: null,
-        timedOut: false,
-        error: `Sandbox failed for ${domain}: ${message}`,
-      },
-      null,
-    );
+  } catch {
+    // ADR-007: prefer completing the run over hard-failing when sandbox infra is unavailable.
+    const payload = await executeDirectHttpRequest(targetUrl, testCase.input);
+    const sandboxResult = payloadToSandboxResult(payload, true);
+
+    return buildUnscoredTestResult(testCase.id, sandboxResult, payload.body);
   } finally {
     if (sandbox) {
       await sandbox.stop().catch(() => undefined);

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-23
+
 ### Added
 
 - Slice 00a: Agent harness — `AGENTS.md`, Cursor rules/skills, docs, CI skeleton, fixtures
@@ -27,3 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slice 11: landing `EvalStartForm` + server action, `RecentRuns`, `GET /api/runs` list API
 - Slice 12: `POST /api/slack/eval` slash command, `lib/slack.ts` signature verify + threaded status updates
 - Slice 13: `lib/observability.ts` OpenTelemetry spans + run metrics, `GET /api/runs/[id]/metrics`, cost summary on run report, staging cost alert in RUNBOOK
+- Slice 15: v1 release — App Router error boundaries, sandbox HTTP fallback with `unverified` flag, README/CICD production checklist, CHANGELOG 1.0.0
+
+### Deferred
+
+- Slice 14: Auth + rate limits — shelved post-v1; see ADR-008 in `docs/DECISIONS.md`

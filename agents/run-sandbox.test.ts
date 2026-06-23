@@ -3,6 +3,7 @@ import {
   SANDBOX_FANOUT,
   SANDBOX_TIMEOUT_MS,
   buildUnscoredTestResult,
+  executeDirectHttpRequest,
   parseSandboxCommandOutput,
   runTestCaseInSandbox,
   runTestCasesInSandbox,
@@ -112,6 +113,54 @@ describe('runTestCaseInSandbox', () => {
     expect(sandboxMocks.stop).toHaveBeenCalled();
     expect(result.response).toBe('hello back');
     expect(result.sandbox.statusCode).toBe(200);
+    expect(result.sandbox.unverified).toBe(false);
+  });
+
+  it('falls back to direct HTTP when sandbox creation fails', async () => {
+    sandboxMocks.create.mockRejectedValue(new Error('Sandbox quota exceeded'));
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      text: vi.fn().mockResolvedValue('direct response'),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runTestCaseInSandbox({
+      targetUrl: 'https://example.com/chat',
+      testCase,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example.com/chat',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: testCase.input }),
+      }),
+    );
+    expect(result.response).toBe('direct response');
+    expect(result.sandbox.unverified).toBe(true);
+    expect(result.sandbox.statusCode).toBe(200);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('executeDirectHttpRequest mirrors sandbox POST payload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 502,
+      text: vi.fn().mockResolvedValue('bad gateway'),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const payload = await executeDirectHttpRequest('https://example.com/chat', 'ping');
+
+    expect(payload).toMatchObject({
+      statusCode: 502,
+      body: 'bad gateway',
+      timedOut: false,
+      error: null,
+    });
+
+    vi.unstubAllGlobals();
   });
 
   it('honors the integration test hook without calling Vercel', async () => {
