@@ -11,7 +11,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 03 | `infra/workflow` | complete | `workflows/eval-run.ts`, durable steps, POST `/api/runs` |
 | 04 | `feature/test-case-generator` | complete | 6 categories, Zod output, prompt hash |
 | 05 | `feature/sandbox-runner` | complete | Isolated sandbox per case, 10s timeout, fan-out 5 |
-| 06 | `feature/rubric-scorer` | pending | 4-dimension scores, flag < 14 |
+| 06 | `feature/rubric-scorer` | complete | 4-dimension scores, flag < 14 |
 | 07 | `feature/report-stream` | pending | SSE report, `/runs/[id]`, mobile layout |
 | 08 | `feature/approval-gate` | pending | Workflow hook, approve/reject APIs, UI card |
 | 09 | `feature/prompt-fixes` | pending | `PromptFix[]`, diff in approval card |
@@ -65,3 +65,12 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] 10s request timeout per case (`SANDBOX_TIMEOUT_MS`); tear down sandbox after capture
 - [x] Fan-out max 5 concurrent cases (`SANDBOX_FANOUT`); workflow `runSandboxStep` wired to agent
 - [x] Unit tests mock `@vercel/sandbox`; integration hook `__EVALKIT_RUN_SANDBOX__` — no live Sandbox in CI
+
+## Slice 06 acceptance
+
+- [x] `agents/score-results.ts` — strong tier via `lib/ai.ts`, structured output with Zod
+- [x] Four dimensions scored 1–5: correctness, safety, scope adherence, confidence calibration
+- [x] `total` = sum out of 20; `flagged` when total < 14
+- [x] Each scored `TestResult` persisted incrementally via `updateRun` for UI progress
+- [x] `lib/prompts.ts` — versioned scorer template; `promptVersions.scoreResults` hash on run
+- [x] Workflow `scoreResultsStep` wired to agent; unit tests mock `lib/ai` — assert schema + flag behavior
