@@ -11,6 +11,7 @@ import {
 const agentMocks = vi.hoisted(() => ({
   generateTestCases: vi.fn(),
   runTestCasesInSandbox: vi.fn(),
+  scoreTestResults: vi.fn(),
 }));
 
 vi.mock('@/agents/generate-cases', () => ({
@@ -19,6 +20,10 @@ vi.mock('@/agents/generate-cases', () => ({
 
 vi.mock('@/agents/run-sandbox', () => ({
   runTestCasesInSandbox: agentMocks.runTestCasesInSandbox,
+}));
+
+vi.mock('@/agents/score-results', () => ({
+  scoreTestResults: agentMocks.scoreTestResults,
 }));
 
 const storeMocks = vi.hoisted(() => ({
@@ -99,6 +104,51 @@ describe('eval-run workflow steps', () => {
         reasoning: null,
       },
     ]);
+    agentMocks.scoreTestResults.mockResolvedValue({
+      results: [
+        {
+          testCaseId: 'tc_1',
+          response: 'hello back',
+          sandbox: {
+            statusCode: 200,
+            body: 'hello back',
+            latencyMs: 12,
+            timedOut: false,
+            error: null,
+          },
+          scores: {
+            correctness: 5,
+            safety: 5,
+            scopeAdherence: 5,
+            confidenceCalibration: 4,
+          },
+          total: 19,
+          flagged: false,
+          reasoning: 'Good response',
+        },
+        {
+          testCaseId: 'tc_2',
+          response: 'refused',
+          sandbox: {
+            statusCode: 200,
+            body: 'refused',
+            latencyMs: 9,
+            timedOut: false,
+            error: null,
+          },
+          scores: {
+            correctness: 2,
+            safety: 3,
+            scopeAdherence: 3,
+            confidenceCalibration: 3,
+          },
+          total: 11,
+          flagged: true,
+          reasoning: 'Weak refusal',
+        },
+      ],
+      promptVersion: { version: '1.0.0', hash: 'sha256:score' },
+    });
   });
 
   it('generateTestCasesStep marks running and persists generated cases with prompt hash', async () => {
@@ -145,16 +195,49 @@ describe('eval-run workflow steps', () => {
     expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, { results });
   });
 
-  it('scoreResultsStep is a no-op stub until Slice 06', async () => {
+  it('scoreResultsStep scores sandbox results and stores prompt hash', async () => {
     storeMocks.getRun.mockResolvedValue({
       ...baseRun,
-      results: [{ testCaseId: 'tc_1', flagged: false }],
+      testCases: [
+        {
+          id: 'tc_1',
+          category: 'edge_case',
+          input: 'hello',
+          expectedBehavior: 'respond',
+        },
+      ],
+      results: [
+        {
+          testCaseId: 'tc_1',
+          response: 'hello back',
+          sandbox: {
+            statusCode: 200,
+            body: 'hello back',
+            latencyMs: 12,
+            timedOut: false,
+            error: null,
+          },
+          scores: null,
+          total: null,
+          flagged: false,
+          reasoning: null,
+        },
+      ],
     });
 
-    await scoreResultsStep(baseRun.id);
+    const results = await scoreResultsStep(baseRun.id);
 
+    expect(agentMocks.scoreTestResults).toHaveBeenCalledWith(baseRun.id, {
+      description: baseRun.input.description,
+      testCases: expect.any(Array),
+      results: expect.any(Array),
+    });
+    expect(results).toHaveLength(2);
+    expect(results[1]?.flagged).toBe(true);
     expect(storeMocks.updateRun).toHaveBeenCalledWith(baseRun.id, {
-      results: [{ testCaseId: 'tc_1', flagged: false }],
+      promptVersions: {
+        scoreResults: { version: '1.0.0', hash: 'sha256:score' },
+      },
     });
   });
 

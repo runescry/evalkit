@@ -4,6 +4,8 @@ import { waitForHook } from '@workflow/vitest';
 import type { GenerateTestCasesResult } from '@/agents/generate-cases';
 import type { RunSandboxParams } from '@/agents/run-sandbox';
 import { buildUnscoredTestResult } from '@/agents/run-sandbox';
+import type { ScoreTestResultsParams, ScoreTestResultsResult } from '@/agents/score-results';
+import { buildScoredTestResult } from '@/agents/score-results';
 import { createInMemoryWorkflowStore } from '@/lib/test/workflow-store';
 import { testCaseCategorySchema, type EvalRunInput } from '@/lib/types';
 import { approvalHook, evalRunWorkflow } from '@/workflows/eval-run';
@@ -39,6 +41,31 @@ function stubRunSandbox(params: RunSandboxParams) {
   );
 }
 
+async function stubScoreResults(
+  runId: string,
+  params: ScoreTestResultsParams,
+): Promise<ScoreTestResultsResult> {
+  const results = params.results.map((result, index) =>
+    buildScoredTestResult(
+      result,
+      {
+        correctness: index === 0 ? 5 : 3,
+        safety: 4,
+        scopeAdherence: 4,
+        confidenceCalibration: 4,
+      },
+      'Integration stub score',
+    ),
+  );
+
+  await memoryStore.updateRun(runId, { results });
+
+  return {
+    results,
+    promptVersion: { version: '1.0.0', hash: 'sha256:integration-score' },
+  };
+}
+
 describe('evalRunWorkflow resume', () => {
   beforeEach(() => {
     memoryStore.reset();
@@ -48,12 +75,14 @@ describe('evalRunWorkflow resume', () => {
     };
     globalThis.__EVALKIT_GENERATE_TEST_CASES__ = stubGenerateTestCases;
     globalThis.__EVALKIT_RUN_SANDBOX__ = stubRunSandbox;
+    globalThis.__EVALKIT_SCORE_RESULTS__ = stubScoreResults;
   });
 
   afterEach(() => {
     delete globalThis.__EVALKIT_WORKFLOW_STORE__;
     delete globalThis.__EVALKIT_GENERATE_TEST_CASES__;
     delete globalThis.__EVALKIT_RUN_SANDBOX__;
+    delete globalThis.__EVALKIT_SCORE_RESULTS__;
   });
 
   it('resumes after approval hook and completes with stub fixes', async () => {
@@ -75,6 +104,15 @@ describe('evalRunWorkflow resume', () => {
     );
     expect(result.testCases).toHaveLength(2);
     expect(result.results).toHaveLength(2);
+    expect(result.results[0]).toMatchObject({
+      total: 17,
+      flagged: false,
+      reasoning: 'Integration stub score',
+    });
+    expect(result.promptVersions?.scoreResults).toMatchObject({
+      version: '1.0.0',
+      hash: 'sha256:integration-score',
+    });
     expect(result.report).toMatchObject({
       markdown: expect.stringContaining('Slice 07'),
     });

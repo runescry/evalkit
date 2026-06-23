@@ -1,6 +1,7 @@
 import { FatalError, RetryableError, defineHook, getStepMetadata } from 'workflow';
 import { generateTestCases } from '@/agents/generate-cases';
 import { runTestCasesInSandbox } from '@/agents/run-sandbox';
+import { scoreTestResults } from '@/agents/score-results';
 import { getRun, updateRun } from './store-bridge';
 import type { EvalRun, TestCase, TestResult } from '@/lib/types';
 
@@ -58,7 +59,7 @@ export async function runSandboxStep(runId: string, testCases: TestCase[]): Prom
 }
 runSandboxStep.maxRetries = STEP_MAX_RETRIES;
 
-export async function scoreResultsStep(runId: string): Promise<void> {
+export async function scoreResultsStep(runId: string): Promise<TestResult[]> {
   'use step';
 
   try {
@@ -66,8 +67,21 @@ export async function scoreResultsStep(runId: string): Promise<void> {
     if (!run) {
       throw new FatalError(`Run not found: ${runId}`);
     }
-    // Slice 06 will score each result; stub keeps sandbox results as-is.
-    await updateRun(runId, { results: run.results });
+
+    const { results, promptVersion } = await scoreTestResults(runId, {
+      description: run.input.description,
+      testCases: run.testCases,
+      results: run.results,
+    });
+
+    await updateRun(runId, {
+      promptVersions: {
+        ...run.promptVersions,
+        scoreResults: promptVersion,
+      },
+    });
+
+    return results;
   } catch (error) {
     if (error instanceof FatalError) {
       throw error;

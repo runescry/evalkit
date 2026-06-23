@@ -17,7 +17,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 
 - [x] **04** Test case generator (`feature/test-case-generator`)
 - [x] **05** Sandbox runner (`feature/sandbox-runner`)
-- [ ] **06** Rubric scorer (`feature/rubric-scorer`)
+- [x] **06** Rubric scorer (`feature/rubric-scorer`)
 
 ## User-facing
 
