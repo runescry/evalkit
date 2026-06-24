@@ -9,20 +9,24 @@ type ApprovalCardProps = {
   runId: string;
   status: EvalRun['status'];
   flaggedCount?: number;
-  onResolved?: (status: EvalRun['status']) => void;
+  onResolved?: (run: EvalRun) => void;
 };
 
 export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: ApprovalCardProps) {
   const [submitting, setSubmitting] = useState<'approve' | 'reject' | null>(null);
+  const [generatingFixes, setGeneratingFixes] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (status !== 'awaiting_approval') {
+  if (status !== 'awaiting_approval' && !generatingFixes) {
     return null;
   }
 
   async function submit(approved: boolean) {
     setSubmitting(approved ? 'approve' : 'reject');
     setError(null);
+    if (approved) {
+      setGeneratingFixes(true);
+    }
 
     try {
       const response = await fetch(`/api/runs/${runId}/approve`, {
@@ -36,13 +40,30 @@ export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: Ap
         throw new Error(body.error ?? 'Approval request failed');
       }
 
-      const run = (await response.json()) as EvalRun;
-      onResolved?.(run.status);
+      const resolvedRun = (await response.json()) as EvalRun;
+      onResolved?.(resolvedRun);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Approval request failed');
     } finally {
       setSubmitting(null);
+      setGeneratingFixes(false);
     }
+  }
+
+  if (generatingFixes || submitting === 'approve') {
+    return (
+      <Card className="eval-card shadow-sm">
+        <CardHeader className="border-b border-border/60">
+          <CardTitle className="text-title">Generating prompt fixes</CardTitle>
+          <CardDescription>
+            Running the fix suggester on flagged findings — this usually takes 15–30 seconds.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Please keep this tab open…</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -70,7 +91,7 @@ export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: Ap
           onClick={() => submit(true)}
           className="w-full sm:w-auto"
         >
-          {submitting === 'approve' ? 'Generating fixes…' : 'Generate fixes'}
+          Generate fixes
         </Button>
         <Button
           variant="outline"

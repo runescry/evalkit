@@ -12,6 +12,27 @@ export type PipelineStep = {
 };
 
 export const STALE_RUN_MS = 3 * 60 * 1000;
+export const APPROVAL_WAIT_MS = 110_000;
+export const APPROVAL_POLL_MS = 750;
+
+/** Poll KV until workflow leaves awaiting_approval (after resumeHook). */
+export async function waitForRunAfterApproval(
+  loadRun: () => Promise<EvalRun | null>,
+  deadlineMs = APPROVAL_WAIT_MS,
+): Promise<EvalRun | null> {
+  const deadline = Date.now() + deadlineMs;
+  while (Date.now() < deadline) {
+    const run = await loadRun();
+    if (!run) {
+      return null;
+    }
+    if (run.status !== 'awaiting_approval') {
+      return run;
+    }
+    await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_MS));
+  }
+  return loadRun();
+}
 
 export function isStaleRun(run: EvalRun, now = Date.now()): boolean {
   if (run.status !== 'pending' && run.status !== 'running') {

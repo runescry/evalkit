@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { getPipelineProgress, isStaleRun } from '@/lib/run-pipeline';
+import { describe, expect, it, vi } from 'vitest';
+import { getPipelineProgress, isStaleRun, waitForRunAfterApproval } from '@/lib/run-pipeline';
 import type { EvalRun } from '@/lib/types';
 
 function baseRun(overrides: Partial<EvalRun> = {}): EvalRun {
@@ -80,5 +80,28 @@ describe('getPipelineProgress', () => {
     });
     expect(isStaleRun(stale)).toBe(true);
     expect(isStaleRun(baseRun({ testCases: [{ id: 'tc_1', category: 'edge_case', input: 'x', expectedBehavior: 'y' }] }))).toBe(false);
+  });
+});
+
+describe('waitForRunAfterApproval', () => {
+  it('polls until status leaves awaiting_approval', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const complete = baseRun({ status: 'complete', approvedAt: 1 });
+    const loadRun = vi.fn(async () => {
+      calls += 1;
+      if (calls < 3) {
+        return baseRun({ status: 'awaiting_approval' });
+      }
+      return complete;
+    });
+
+    const promise = waitForRunAfterApproval(loadRun, 10_000);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result?.status).toBe('complete');
+    expect(loadRun.mock.calls.length).toBeGreaterThanOrEqual(3);
+    vi.useRealTimers();
   });
 });

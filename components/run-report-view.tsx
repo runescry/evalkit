@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeRunStream } from '@/lib/sse';
+import { APPROVAL_POLL_MS } from '@/lib/run-pipeline';
 import { cn } from '@/lib/utils';
 import type { EvalRun, RunMetrics } from '@/lib/types';
 
@@ -176,19 +177,36 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
     };
   }, [run.id, run.status, streamDone]);
 
-  async function handleApprovalResolved() {
+  async function handleApprovalResolved(updated: EvalRun) {
+    setRun(updated);
+    setMetrics(updated.metrics);
+    setMarkdown(updated.report?.markdown ?? markdown);
+    setSummary(updated.report?.summary);
+
+    if (updated.status === 'awaiting_approval') {
+      const deadline = Date.now() + 110_000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_MS));
+        try {
+          const fresh = await fetchRun(run.id);
+          setRun(fresh);
+          setMetrics(fresh.metrics);
+          if (fresh.status !== 'awaiting_approval') {
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
+    }
+
     try {
-      const updated = await fetchRun(run.id);
-      setRun(updated);
-      setMetrics(updated.metrics);
-      setMarkdown(updated.report?.markdown ?? markdown);
-      setSummary(updated.report?.summary);
       const nextMetrics = await fetchRunMetrics(run.id);
       if (nextMetrics) {
         setMetrics(nextMetrics);
       }
     } catch {
-      // Keep current UI if refresh fails; approval API already returned status.
+      // Best-effort metrics refresh after approval.
     }
   }
 
@@ -300,7 +318,18 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           onResolved={handleApprovalResolved}
         />
 
-        {run.suggestedFixes ? <FixSuggestions fixes={run.suggestedFixes} /> : null}
+        {run.suggestedFixes && run.suggestedFixes.length > 0 ? (
+          <FixSuggestions fixes={run.suggestedFixes} />
+        ) : run.status === 'complete' && run.approvedAt != null ? (
+          <Card className="eval-card shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-title">Suggested prompt fixes</CardTitle>
+              <CardDescription>
+                Fix generation finished but the model returned no diffs for this run.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : null}
       </div>
     </>
   );

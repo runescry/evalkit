@@ -35,10 +35,12 @@ const awaitingRun = {
 describe('POST /api/runs/[id]/approve', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resumeHookMock.mockResolvedValue(undefined);
+    storeMocks.getRun.mockReset();
     storeMocks.getRun
       .mockResolvedValueOnce(awaitingRun)
-      .mockResolvedValueOnce({ ...awaitingRun, status: 'complete', approvedAt: 99 });
-    resumeHookMock.mockResolvedValue(undefined);
+      .mockResolvedValueOnce(awaitingRun)
+      .mockResolvedValueOnce({ ...awaitingRun, status: 'complete', approvedAt: 99, suggestedFixes: [] });
   });
 
   it('resumes approval hook and returns updated run', async () => {
