@@ -3,6 +3,7 @@ import {
   EVAL_ALIGNMENT_THRESHOLD,
   loadGroundTruth,
   runAlignmentEval,
+  runDualTierAlignmentEval,
   scoreAlignmentForCase,
 } from '@/lib/eval-alignment';
 
@@ -25,5 +26,12 @@ describe('eval alignment', () => {
     const report = runAlignmentEval(loadGroundTruth());
     expect(report.alignmentRate).toBeGreaterThanOrEqual(EVAL_ALIGNMENT_THRESHOLD);
     expect(report.passed).toBe(true);
+  });
+
+  it('passes dual-tier L3 gate on ground truth', () => {
+    const report = runDualTierAlignmentEval(loadGroundTruth());
+    expect(report.passed).toBe(true);
+    expect(report.fast.passed).toBe(true);
+    expect(report.strong.passed).toBe(true);
   });
 });

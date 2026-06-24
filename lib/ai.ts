@@ -1,5 +1,6 @@
 import type { GatewayProviderOptions } from '@ai-sdk/gateway';
 import {
+  gateway,
   generateText,
   streamText,
 } from 'ai';
@@ -79,10 +80,10 @@ function extractCallMeta(
   providerMetadata: GatewayProviderMetadata | undefined,
   usage: { inputTokens?: number; outputTokens?: number } | undefined,
 ): EvalkitCallMeta {
-  const gateway = providerMetadata?.gateway;
+  const gatewayMeta = providerMetadata?.gateway;
   const modelId =
-    gateway?.modelAttempts?.at(-1)?.canonicalSlug ??
-    gateway?.modelAttempts?.at(-1)?.modelId ??
+    gatewayMeta?.modelAttempts?.at(-1)?.canonicalSlug ??
+    gatewayMeta?.modelAttempts?.at(-1)?.modelId ??
     TIER_MODELS[tier].primary;
 
   return {
@@ -92,9 +93,50 @@ function extractCallMeta(
     modelId: modelId ?? null,
     inputTokens: usage?.inputTokens ?? null,
     outputTokens: usage?.outputTokens ?? null,
-    totalCost: gateway?.totalCost ?? null,
-    generationId: gateway?.generationId ?? null,
+    totalCost: gatewayMeta?.totalCost ?? null,
+    generationId: gatewayMeta?.generationId ?? null,
   };
+}
+
+const GENERATION_INFO_RETRIES = 3;
+const GENERATION_INFO_DELAY_MS = 250;
+
+/** Gateway often omits totalCost on the response; look it up by generationId. */
+async function lookupGenerationCost(generationId: string): Promise<number | null> {
+  for (let attempt = 0; attempt < GENERATION_INFO_RETRIES; attempt += 1) {
+    try {
+      const info = await gateway.getGenerationInfo({ id: generationId });
+      if (typeof info.totalCost === 'number') {
+        return info.totalCost;
+      }
+    } catch {
+      // Generation info may not be indexed yet — retry briefly.
+    }
+    if (attempt < GENERATION_INFO_RETRIES - 1) {
+      await new Promise((resolve) => setTimeout(resolve, GENERATION_INFO_DELAY_MS * (attempt + 1)));
+    }
+  }
+  return null;
+}
+
+async function resolveCallMeta(
+  tier: ModelTier,
+  step: string,
+  latencyMs: number,
+  providerMetadata: GatewayProviderMetadata | undefined,
+  usage: { inputTokens?: number; outputTokens?: number } | undefined,
+): Promise<EvalkitCallMeta> {
+  const meta = extractCallMeta(tier, step, latencyMs, providerMetadata, usage);
+  if (meta.totalCost != null || !meta.generationId) {
+    return meta;
+  }
+
+  const totalCost = await lookupGenerationCost(meta.generationId);
+  if (totalCost == null) {
+    return meta;
+  }
+
+  return { ...meta, totalCost };
 }
 
 export type GenerateWithTierParams = {
@@ -115,7 +157,7 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
   const started = Date.now();
 
   const result = await generateText({
-    model: primary,
+    model: gateway(primary),
     prompt,
     system,
     maxRetries,
@@ -124,7 +166,7 @@ async function generateWithTierInternal(params: GenerateWithTierParams) {
     ...telemetryOptions(tier, step, runId),
   });
 
-  const evalkit = extractCallMeta(
+  const evalkit = await resolveCallMeta(
     tier,
     step,
     Date.now() - started,
@@ -153,7 +195,7 @@ export function streamWithTier(params: StreamWithTierParams) {
   const started = Date.now();
 
   const result = streamText({
-    model: primary,
+    model: gateway(primary),
     prompt,
     system,
     maxRetries,
@@ -161,14 +203,15 @@ export function streamWithTier(params: StreamWithTierParams) {
     ...telemetryOptions(tier, step, runId),
   });
 
-  const evalkit = Promise.resolve(result.providerMetadata).then((metadata) =>
-    extractCallMeta(
-      tier,
-      step,
-      Date.now() - started,
-      metadata as GatewayProviderMetadata,
-      undefined,
-    ),
+  const evalkit = Promise.all([result.usage, Promise.resolve(result.providerMetadata)]).then(
+    async ([usage, metadata]) =>
+      resolveCallMeta(
+        tier,
+        step,
+        Date.now() - started,
+        metadata as GatewayProviderMetadata,
+        usage,
+      ),
   );
 
   return Object.assign(result, { evalkit });

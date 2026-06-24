@@ -5,7 +5,8 @@ import {
   isResultFlagged,
   scoreTestResults,
 } from './score-results';
-import { rubricScoresSchema, type TestCase, type TestResult } from '@/lib/types';
+import { rubricScoresSchema, evalRunInputSchema, type TestCase, type TestResult } from '@/lib/types';
+import fintechFixture from '@/fixtures/fintech-chatbot.json';
 
 const { generateWithTierMock, updateRunMock } = vi.hoisted(() => ({
   generateWithTierMock: vi.fn(),
@@ -19,6 +20,8 @@ vi.mock('@/lib/ai', () => ({
 vi.mock('@/workflows/store-bridge', () => ({
   updateRun: updateRunMock,
 }));
+
+const runInput = evalRunInputSchema.parse(fintechFixture);
 
 const baseTestCase: TestCase = {
   id: 'tc_run_1',
@@ -108,6 +111,7 @@ describe('scoreTestResults', () => {
     });
 
     const result = await scoreTestResults('run_abc', {
+      runInput,
       description: 'Fintech support bot',
       testCases: [baseTestCase],
       results: [unscoredResult],
@@ -128,7 +132,7 @@ describe('scoreTestResults', () => {
       reasoning: expect.stringContaining('authentication'),
     });
     expect(result.promptVersion).toMatchObject({
-      version: '1.0.0',
+      version: '1.3.0',
       hash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
     });
   });
@@ -144,6 +148,7 @@ describe('scoreTestResults', () => {
     });
 
     const result = await scoreTestResults('run_flag', {
+      runInput,
       description: 'Fintech support bot',
       testCases: [baseTestCase],
       results: [unscoredResult],
@@ -186,6 +191,7 @@ describe('scoreTestResults', () => {
       });
 
     await scoreTestResults('run_incremental', {
+      runInput,
       description: 'Fintech support bot',
       testCases: [baseTestCase, secondCase],
       results: [unscoredResult, secondResult],
@@ -209,10 +215,49 @@ describe('scoreTestResults', () => {
   it('throws when a result references a missing test case', async () => {
     await expect(
       scoreTestResults('run_missing', {
+        runInput,
         description: 'Bot',
         testCases: [],
         results: [unscoredResult],
       }),
     ).rejects.toThrow(/Missing test case/);
+  });
+
+  it('scores with dual tiers in parallel and stores multiModelScore', async () => {
+    generateWithTierMock
+      .mockResolvedValueOnce({
+        output: mockScoreOutput({
+          correctness: 4,
+          safety: 4,
+          scopeAdherence: 4,
+          confidenceCalibration: 4,
+        }),
+      })
+      .mockResolvedValueOnce({
+        output: mockScoreOutput({
+          correctness: 2,
+          safety: 2,
+          scopeAdherence: 2,
+          confidenceCalibration: 2,
+        }),
+      });
+
+    const result = await scoreTestResults('run_dual', {
+      runInput,
+      description: 'Fintech support bot',
+      testCases: [baseTestCase],
+      results: [unscoredResult],
+      scoringMode: 'dual',
+    });
+
+    expect(generateWithTierMock).toHaveBeenCalledTimes(2);
+    expect(generateWithTierMock.mock.calls.map((c) => c[0]?.tier).sort()).toEqual(['fast', 'strong']);
+    expect(result.results[0]?.multiModelScore).toMatchObject({
+      flagAgreement: false,
+      fast: { total: 16, flagged: false },
+      strong: { total: 8, flagged: true },
+    });
+    expect(result.results[0]?.total).toBe(8);
+    expect(result.results[0]?.flagged).toBe(true);
   });
 });

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateWithTier, TIER_MODELS, pingTier } from './ai';
 
-const { generateTextMock } = vi.hoisted(() => ({
+const { generateTextMock, gatewayModelMock, getGenerationInfoMock } = vi.hoisted(() => ({
   generateTextMock: vi.fn(),
+  gatewayModelMock: vi.fn((model: string) => `gateway:${model}`),
+  getGenerationInfoMock: vi.fn(),
 }));
 
 const observabilityMocks = vi.hoisted(() => ({
@@ -16,11 +18,15 @@ vi.mock('@/lib/observability', () => ({
 vi.mock('ai', () => ({
   generateText: generateTextMock,
   streamText: vi.fn(),
+  gateway: Object.assign(gatewayModelMock, {
+    getGenerationInfo: getGenerationInfoMock,
+  }),
 }));
 
 describe('lib/ai', () => {
   beforeEach(() => {
     generateTextMock.mockReset();
+    getGenerationInfoMock.mockReset();
     observabilityMocks.recordAiCallWithSpan.mockResolvedValue(undefined);
   });
 
@@ -39,7 +45,7 @@ describe('lib/ai', () => {
 
     expect(generateTextMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: TIER_MODELS.fast.primary,
+        model: `gateway:${TIER_MODELS.fast.primary}`,
         prompt: 'hello',
         providerOptions: {
           gateway: {
@@ -72,7 +78,7 @@ describe('lib/ai', () => {
 
     expect(generateTextMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: TIER_MODELS.strong.primary,
+        model: `gateway:${TIER_MODELS.strong.primary}`,
         providerOptions: {
           gateway: {
             tags: ['evalkit.tier:strong', 'evalkit.step:score-results'],
@@ -113,6 +119,24 @@ describe('lib/ai', () => {
         },
       }),
     );
+  });
+
+  it('looks up totalCost via gateway.getGenerationInfo when missing from response', async () => {
+    generateTextMock.mockResolvedValue({
+      text: 'ok',
+      usage: { inputTokens: 5, outputTokens: 2 },
+      providerMetadata: { gateway: { generationId: 'gen-lookup' } },
+    });
+    getGenerationInfoMock.mockResolvedValue({ totalCost: 0.00042 });
+
+    const result = await generateWithTier({
+      tier: 'fast',
+      step: 'generate-test-cases',
+      prompt: 'hello',
+    });
+
+    expect(getGenerationInfoMock).toHaveBeenCalledWith({ id: 'gen-lookup' });
+    expect(result.evalkit.totalCost).toBe(0.00042);
   });
 
   it('pingTier returns ok when model responds with ok', async () => {

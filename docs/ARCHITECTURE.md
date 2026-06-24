@@ -2,6 +2,8 @@
 
 AI eval harness: URL + description → test cases → sandbox execution → rubric scoring → streaming report → human-approved fixes.
 
+**Live interview reference:** open `/architecture` → **Workflow** tab for step-by-step what runs and infrastructure choices; **Backend map** for Fluid Compute, AI Gateway, and code paths. Deep-link with `#generate-test-cases`, `#ai-gateway`, etc.
+
 ## Data flow
 
 ```

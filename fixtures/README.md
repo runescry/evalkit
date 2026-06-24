@@ -7,6 +7,8 @@ Golden inputs for unit and agent tests. **Test shape and behavior, not verbatim 
 | File | Use |
 |------|-----|
 | `fintech-chatbot.json` | Canonical app description for generator/scorer tests |
+| `aidea-fast-chat.json` | aidea fast-chat eval demo preset |
+| `aidea-agent-matrix-pilot.json` | 3-agent persona matrix pilot (harness-json) |
 
 ## Adding fixtures
 

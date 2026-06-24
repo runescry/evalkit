@@ -4,7 +4,7 @@ import {
   evalRunSchema,
   evalRunUpdateSchema,
   type EvalRun,
-  type EvalRunInput,
+  type EvalRunInputCreate,
   type EvalRunUpdate,
 } from '@/lib/types';
 
@@ -45,7 +45,7 @@ function parseRun(value: unknown, runId: string): EvalRun {
   return parsed.data;
 }
 
-export type CreateRunParams = EvalRunInput;
+export type CreateRunParams = EvalRunInputCreate;
 
 export async function createRun(input: CreateRunParams): Promise<EvalRun> {
   const parsedInput = evalRunInputSchema.safeParse(input);

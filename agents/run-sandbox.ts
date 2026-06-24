@@ -1,11 +1,17 @@
 import { Sandbox } from '@vercel/sandbox';
-import type { SandboxResult, TestCase, TestResult } from '@/lib/types';
+import {
+  buildSandboxRequestBody,
+  resolveSandboxTarget,
+  sandboxFanoutForInput,
+} from '@/lib/agent-matrix';
+import { normalizeSandboxCapture } from '@/lib/sandbox-response';
+import type { EvalRunInput, SandboxContract, SandboxResult, TestCase, TestResult } from '@/lib/types';
 
 export const SANDBOX_TIMEOUT_MS = 10_000;
 export const SANDBOX_FANOUT = 5;
 
 export type RunSandboxParams = {
-  targetUrl: string;
+  runInput: EvalRunInput;
   testCase: TestCase;
 };
 
@@ -17,7 +23,7 @@ declare global {
 
 const SANDBOX_REQUEST_SCRIPT = `
 const url = process.env.EVALKIT_TARGET_URL;
-const message = process.env.EVALKIT_MESSAGE;
+const requestBody = process.env.EVALKIT_REQUEST_BODY;
 const timeoutMs = Number(process.env.EVALKIT_TIMEOUT_MS || '10000');
 const started = Date.now();
 const controller = new AbortController();
@@ -27,7 +33,7 @@ const timer = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: requestBody,
       signal: controller.signal,
     });
     const body = await res.text();
@@ -88,7 +94,7 @@ export function parseSandboxCommandOutput(stdout: string): SandboxCommandPayload
 /** Direct HTTP POST — same payload as the sandbox script. See ADR-007 in docs/DECISIONS.md. */
 export async function executeDirectHttpRequest(
   targetUrl: string,
-  message: string,
+  requestBody: Record<string, unknown>,
   timeoutMs: number = SANDBOX_TIMEOUT_MS,
 ): Promise<SandboxCommandPayload> {
   const started = Date.now();
@@ -99,7 +105,7 @@ export async function executeDirectHttpRequest(
     const res = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
     const body = await res.text();
@@ -127,15 +133,33 @@ export async function executeDirectHttpRequest(
 export function payloadToSandboxResult(
   payload: SandboxCommandPayload,
   unverified: boolean,
+  contract: SandboxContract,
+  agentId?: string,
 ): SandboxResult {
+  const normalized = normalizeSandboxCapture(payload.statusCode, payload.body, contract);
   return {
     statusCode: payload.statusCode,
     body: payload.body,
     latencyMs: payload.latencyMs,
     timedOut: payload.timedOut,
     error: payload.error,
+    scopeRejected: normalized.scopeRejected || undefined,
     unverified,
+    contract,
+    agentId,
+    toolCalls: normalized.toolCalls,
+    structured: normalized.structured,
+    validationOk: normalized.validationOk,
+    validationErrors: normalized.validationErrors,
+    validationWarnings: normalized.validationWarnings,
   };
+}
+
+export function responseTextFromPayload(
+  payload: SandboxCommandPayload,
+  contract: SandboxContract = 'message-json',
+): string | null {
+  return normalizeSandboxCapture(payload.statusCode, payload.body, contract).responseText;
 }
 
 export function buildUnscoredTestResult(
@@ -163,12 +187,22 @@ export async function runTestCaseInSandbox(params: RunSandboxParams): Promise<Te
 }
 
 async function runTestCaseInVercelSandbox(params: RunSandboxParams): Promise<TestResult> {
-  const { targetUrl, testCase } = params;
+  const { runInput, testCase } = params;
+  const target = resolveSandboxTarget(runInput, testCase);
+  const timeoutMs = runInput.sandboxTimeoutMs;
+  const requestBody = buildSandboxRequestBody(
+    runInput,
+    target.contract,
+    testCase,
+    target.agentId,
+  );
+  const requestBodyJson = JSON.stringify(requestBody);
+
   let sandbox: Sandbox | null = null;
 
   try {
     sandbox = await Sandbox.create({
-      timeout: SANDBOX_TIMEOUT_MS,
+      timeout: timeoutMs,
       runtime: 'node22',
     });
 
@@ -176,23 +210,40 @@ async function runTestCaseInVercelSandbox(params: RunSandboxParams): Promise<Tes
       cmd: 'node',
       args: ['-e', SANDBOX_REQUEST_SCRIPT],
       env: {
-        EVALKIT_TARGET_URL: targetUrl,
-        EVALKIT_MESSAGE: testCase.input,
-        EVALKIT_TIMEOUT_MS: String(SANDBOX_TIMEOUT_MS),
+        EVALKIT_TARGET_URL: target.targetUrl,
+        EVALKIT_REQUEST_BODY: requestBodyJson,
+        EVALKIT_TIMEOUT_MS: String(timeoutMs),
       },
     });
 
     const stdout = await finished.stdout();
     const payload = parseSandboxCommandOutput(stdout);
-    const sandboxResult = payloadToSandboxResult(payload, false);
+    const sandboxResult = payloadToSandboxResult(
+      payload,
+      false,
+      target.contract,
+      target.agentId,
+    );
 
-    return buildUnscoredTestResult(testCase.id, sandboxResult, payload.body);
+    return buildUnscoredTestResult(
+      testCase.id,
+      sandboxResult,
+      responseTextFromPayload(payload, target.contract),
+    );
   } catch {
-    // ADR-007: prefer completing the run over hard-failing when sandbox infra is unavailable.
-    const payload = await executeDirectHttpRequest(targetUrl, testCase.input);
-    const sandboxResult = payloadToSandboxResult(payload, true);
+    const payload = await executeDirectHttpRequest(target.targetUrl, requestBody, timeoutMs);
+    const sandboxResult = payloadToSandboxResult(
+      payload,
+      true,
+      target.contract,
+      target.agentId,
+    );
 
-    return buildUnscoredTestResult(testCase.id, sandboxResult, payload.body);
+    return buildUnscoredTestResult(
+      testCase.id,
+      sandboxResult,
+      responseTextFromPayload(payload, target.contract),
+    );
   } finally {
     if (sandbox) {
       await sandbox.stop().catch(() => undefined);
@@ -201,16 +252,16 @@ async function runTestCaseInVercelSandbox(params: RunSandboxParams): Promise<Tes
 }
 
 export async function runTestCasesInSandbox(
-  targetUrl: string,
+  runInput: EvalRunInput,
   testCases: TestCase[],
-  concurrency: number = SANDBOX_FANOUT,
+  concurrency: number = sandboxFanoutForInput(runInput),
 ): Promise<TestResult[]> {
   const results: TestResult[] = [];
 
   for (let offset = 0; offset < testCases.length; offset += concurrency) {
     const batch = testCases.slice(offset, offset + concurrency);
     const batchResults = await Promise.all(
-      batch.map((testCase) => runTestCaseInSandbox({ targetUrl, testCase })),
+      batch.map((testCase) => runTestCaseInSandbox({ runInput, testCase })),
     );
     results.push(...batchResults);
   }

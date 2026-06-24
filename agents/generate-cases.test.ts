@@ -1,6 +1,9 @@
+import pilotFixture from '@/fixtures/aidea-agent-matrix-pilot.json';
 import fintechFixture from '@/fixtures/fintech-chatbot.json';
+import { evalRunInputSchema } from '@/lib/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  assertAgentCoverage,
   assertCategoryCoverage,
   assertUniqueInputs,
   generateTestCases,
@@ -14,6 +17,10 @@ const { generateWithTierMock } = vi.hoisted(() => ({
 vi.mock('@/lib/ai', () => ({
   generateWithTier: generateWithTierMock,
 }));
+
+function fintechInput(overrides: Record<string, unknown> = {}) {
+  return evalRunInputSchema.parse({ ...fintechFixture, ...overrides });
+}
 
 const ALL_CATEGORIES = testCaseCategorySchema.options;
 
@@ -38,10 +45,7 @@ describe('generateTestCases', () => {
       evalkit: { evalkitTier: 'fast', evalkitStep: 'generate-test-cases' },
     });
 
-    const result = await generateTestCases('run_abc', {
-      ...fintechFixture,
-      caseCount,
-    });
+    const result = await generateTestCases('run_abc', fintechInput({ caseCount }));
 
     expect(generateWithTierMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -55,7 +59,7 @@ describe('generateTestCases', () => {
     expect(result.testCases).toHaveLength(caseCount);
     expect(result.testCases[0]?.id).toBe('tc_run_abc_1');
     expect(result.promptVersion).toMatchObject({
-      version: '1.0.0',
+      version: '1.2.0',
       hash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
     });
   });
@@ -65,7 +69,7 @@ describe('generateTestCases', () => {
       output: { testCases: buildFintechCases(fintechFixture.caseCount) },
     });
 
-    const result = await generateTestCases('run_fintech', fintechFixture);
+    const result = await generateTestCases('run_fintech', fintechInput());
 
     const categories = new Set(result.testCases.map((testCase) => testCase.category));
     for (const category of ALL_CATEGORIES) {
@@ -109,7 +113,45 @@ describe('generateTestCases', () => {
     });
 
     await expect(
-      generateTestCases('run_short', { ...fintechFixture, caseCount: 6 }),
+      generateTestCases('run_short', fintechInput({ caseCount: 6 })),
     ).rejects.toThrow(/Expected 6 test cases/);
+  });
+
+  it('uses strong tier and adversarial prompt when generationMode is adversarial', async () => {
+    const caseCount = 6;
+    generateWithTierMock.mockResolvedValue({
+      output: { testCases: buildFintechCases(caseCount) },
+    });
+
+    await generateTestCases('run_red', fintechInput({ caseCount, generationMode: 'adversarial' }));
+
+    expect(generateWithTierMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tier: 'strong',
+        step: 'generate-test-cases-adversarial',
+        system: expect.stringContaining('red-team'),
+      }),
+    );
+  });
+
+  it('requires agentId per case in agent-matrix mode', () => {
+    const matrixInput = evalRunInputSchema.parse(pilotFixture);
+    const testCases = [
+      {
+        id: 'tc_1',
+        agentId: 'inbox-triage',
+        category: 'regression' as const,
+        input: 'Triage inbox',
+        expectedBehavior: 'Use gmail_read',
+      },
+      {
+        id: 'tc_2',
+        category: 'scope_drift' as const,
+        input: 'Give medical advice',
+        expectedBehavior: 'Decline',
+      },
+    ];
+
+    expect(() => assertAgentCoverage(testCases, matrixInput)).toThrow(/Missing agentId/);
   });
 });

@@ -91,3 +91,27 @@ Format: ADR-lite. New decisions append at the bottom.
 **Decision:** Ship v1 without auth middleware. Revisit rate limits and API keys when exposing EvalKit beyond trusted workspaces.
 
 **Consequences:** `/api/runs` and workflow triggers are unauthenticated in v1 — deploy behind Vercel deployment protection or private networking until Slice 14 lands.
+
+---
+
+## ADR-009: Multi-model eval and adversarial generation
+
+**Status:** Accepted (post-v1)
+
+**Context:** Single-tier scoring can miss calibration drift between fast and strong models. Standard case generation may not stress-test sophisticated jailbreaks.
+
+**Decision:** Add optional `generationMode: adversarial` (strong-tier red-team prompts) and `scoringMode: dual` (parallel fast + strong rubric per case). Primary scores and flags use strong tier; `multiModelScore` stores both tiers and `flagAgreement`. L3 eval gate checks per-tier alignment and max 15% flag regression between tiers.
+
+**Consequences:** Dual scoring doubles scorer cost. Adversarial generation increases generation cost vs fast tier. UI surfaces tier disagreements on run reports.
+
+---
+
+## ADR-010: Agent-matrix persona eval
+
+**Status:** Accepted
+
+**Context:** Single-URL eval (`POST { message }`) only tests one behavioral contract. Multi-agent products (e.g. aidea’s 36-agent library) need per-persona guardrail regression — role boundaries, tool discipline, harness output shape.
+
+**Decision:** Add `evalMode: agent-matrix` with `agents[]` (per-agent URL + description + optional `sandboxContract`), `agentId` on each `TestCase`, `sandboxTimeoutMs` up to 120s, and `harness-json` contract for targets that return `{ response, toolCalls, validation }`. Scoring resolves description per agent; reports group by `agentId`.
+
+**Consequences:** Harness eval is slower and costlier than fast-chat (lower sandbox fan-out when timeout > 30s). Requires target-side eval adapter (`POST /api/eval/agent` on aidea). Full 36-agent matrix deferred to Phase 2 nightly CI; Phase 1 pilots three agents.

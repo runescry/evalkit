@@ -93,7 +93,7 @@ describe('buildReport', () => {
 
     expect(result.report.markdown).toContain('# Eval report');
     expect(result.report.summary).toContain('handled auth');
-    expect(result.promptVersion.version).toBe('1.0.0');
+    expect(result.promptVersion.version).toBe('1.1.0');
     expect(storeMocks.updateRun).toHaveBeenCalledWith('run_test', {
       report: { markdown: '', summary: undefined },
     });

@@ -8,10 +8,11 @@ import type { EvalRun } from '@/lib/types';
 type ApprovalCardProps = {
   runId: string;
   status: EvalRun['status'];
+  flaggedCount?: number;
   onResolved?: (status: EvalRun['status']) => void;
 };
 
-export function ApprovalCard({ runId, status, onResolved }: ApprovalCardProps) {
+export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: ApprovalCardProps) {
   const [submitting, setSubmitting] = useState<'approve' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,12 +46,22 @@ export function ApprovalCard({ runId, status, onResolved }: ApprovalCardProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Approve prompt fixes?</CardTitle>
+    <Card className="eval-card shadow-sm">
+      <CardHeader className="border-b border-border/60">
+        <CardTitle className="text-title">Generate prompt fixes?</CardTitle>
         <CardDescription>
-          Approving will generate suggested prompt changes from flagged findings. Rejecting
-          completes the run without fixes.
+          {flaggedCount > 0 ? (
+            <>
+              <strong>{flaggedCount}</strong> flagged case{flaggedCount === 1 ? '' : 's'} are listed
+              above. Approving runs the fix suggester on those findings — you will see unified diffs
+              below once generation finishes. Rejecting marks the run complete with no fixes.
+            </>
+          ) : (
+            <>
+              No flagged cases in this run. Approving still runs the fix suggester (it may return
+              nothing useful). Rejecting completes the run without fixes.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -59,7 +70,7 @@ export function ApprovalCard({ runId, status, onResolved }: ApprovalCardProps) {
           onClick={() => submit(true)}
           className="w-full sm:w-auto"
         >
-          {submitting === 'approve' ? 'Approving…' : 'Approve fixes'}
+          {submitting === 'approve' ? 'Generating fixes…' : 'Generate fixes'}
         </Button>
         <Button
           variant="outline"

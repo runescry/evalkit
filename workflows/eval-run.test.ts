@@ -54,6 +54,10 @@ const baseRun = {
     url: 'https://example.com/chat',
     description: 'Test bot',
     caseCount: 3,
+    generationMode: 'standard' as const,
+    scoringMode: 'dual' as const,
+    sandboxContract: 'message-json' as const,
+    sandboxTimeoutMs: 10_000,
   },
   testCases: [],
   results: [],
@@ -214,7 +218,7 @@ describe('eval-run workflow steps', () => {
 
     const results = await runSandboxStep(baseRun.id, testCases);
 
-    expect(agentMocks.runTestCasesInSandbox).toHaveBeenCalledWith(baseRun.input.url, testCases);
+    expect(agentMocks.runTestCasesInSandbox).toHaveBeenCalledWith(baseRun.input, testCases);
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({
       testCaseId: 'tc_1',
@@ -257,9 +261,11 @@ describe('eval-run workflow steps', () => {
     const results = await scoreResultsStep(baseRun.id);
 
     expect(agentMocks.scoreTestResults).toHaveBeenCalledWith(baseRun.id, {
+      runInput: baseRun.input,
       description: baseRun.input.description,
       testCases: expect.any(Array),
       results: expect.any(Array),
+      scoringMode: 'dual',
     });
     expect(results).toHaveLength(2);
     expect(results[1]?.flagged).toBe(true);

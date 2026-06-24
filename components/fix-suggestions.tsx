@@ -11,12 +11,12 @@ export function FixSuggestions({ fixes }: FixSuggestionsProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Suggested prompt fixes</CardTitle>
+    <Card className="eval-card shadow-sm">
+      <CardHeader className="border-b border-border/60">
+        <CardTitle className="text-title">Suggested prompt fixes</CardTitle>
         <CardDescription>Review diffs before applying changes in your chatbot repo.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-5 space-y-4">
         {fixes.map((fix) => (
           <div key={fix.id} className="space-y-2 rounded-md border p-3">
             <div>

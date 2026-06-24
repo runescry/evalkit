@@ -59,7 +59,7 @@ export async function runSandboxStep(runId: string, testCases: TestCase[]): Prom
           throw new FatalError(`Run not found: ${runId}`);
         }
 
-        const results = await runTestCasesInSandbox(run.input.url, testCases);
+        const results = await runTestCasesInSandbox(run.input, testCases);
         await updateRun(runId, { results });
         return results;
       } catch (error) {
@@ -82,9 +82,11 @@ export async function scoreResultsStep(runId: string): Promise<TestResult[]> {
       }
 
       const { results, promptVersion } = await scoreTestResults(runId, {
+        runInput: run.input,
         description: run.input.description,
         testCases: run.testCases,
         results: run.results,
+        scoringMode: run.input.scoringMode,
       });
 
       await updateRun(runId, {

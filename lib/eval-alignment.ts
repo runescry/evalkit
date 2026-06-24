@@ -3,6 +3,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { buildScoredTestResult } from '@/agents/score-results';
+import {
+  computeFlagRegressionRate,
+  DUAL_TIER_ALIGNMENT_THRESHOLD,
+  evaluateDualTierAlignment,
+  type DualTierAlignmentReport,
+  type TierAlignmentSummary,
+} from '@/lib/multi-model-eval';
 import { rubricScoresSchema, testCaseSchema, testResultSchema } from '@/lib/types';
 
 export const EVAL_ALIGNMENT_THRESHOLD = 0.85;
@@ -16,6 +23,13 @@ const groundTruthCaseSchema = z.object({
     scores: rubricScoresSchema,
     reasoning: z.string().min(1),
   }),
+  /** Optional fast-tier mock; defaults to mockOutput when absent */
+  fastMockOutput: z
+    .object({
+      scores: rubricScoresSchema,
+      reasoning: z.string().min(1),
+    })
+    .optional(),
   expectedFlagged: z.boolean(),
 });
 
@@ -81,5 +95,69 @@ export function runAlignmentEval(set: GroundTruthSet): AlignmentReport {
     alignmentRate,
     passed: alignmentRate >= EVAL_ALIGNMENT_THRESHOLD,
     cases,
+  };
+}
+
+function tierSummaryFromCases(
+  tier: 'fast' | 'strong',
+  cases: Array<{ expectedFlagged: boolean; actualFlagged: boolean }>,
+): TierAlignmentSummary {
+  const alignedCases = cases.filter((c) => c.expectedFlagged === c.actualFlagged).length;
+  const alignmentRate = cases.length === 0 ? 0 : alignedCases / cases.length;
+  return {
+    tier,
+    alignedCases,
+    totalCases: cases.length,
+    alignmentRate,
+    passed: alignmentRate >= DUAL_TIER_ALIGNMENT_THRESHOLD,
+  };
+}
+
+export function runDualTierAlignmentEval(set: GroundTruthSet): DualTierAlignmentReport {
+  const strongCases = set.cases.map((testCase) => {
+    const scored = buildScoredTestResult(
+      testCase.result,
+      testCase.mockOutput.scores,
+      testCase.mockOutput.reasoning,
+    );
+    return {
+      expectedFlagged: testCase.expectedFlagged,
+      actualFlagged: scored.flagged,
+    };
+  });
+
+  const fastCases = set.cases.map((testCase) => {
+    const fastMock = testCase.fastMockOutput ?? testCase.mockOutput;
+    const scored = buildScoredTestResult(
+      testCase.result,
+      fastMock.scores,
+      fastMock.reasoning,
+    );
+    return {
+      expectedFlagged: testCase.expectedFlagged,
+      actualFlagged: scored.flagged,
+      fastFlagged: scored.flagged,
+      strongFlagged: buildScoredTestResult(
+        testCase.result,
+        testCase.mockOutput.scores,
+        testCase.mockOutput.reasoning,
+      ).flagged,
+    };
+  });
+
+  const fast = tierSummaryFromCases(
+    'fast',
+    fastCases.map((c) => ({ expectedFlagged: c.expectedFlagged, actualFlagged: c.actualFlagged })),
+  );
+  const strong = tierSummaryFromCases('strong', strongCases);
+  const flagRegressionRate = computeFlagRegressionRate(
+    fastCases.map((c) => ({ fastFlagged: c.fastFlagged, strongFlagged: c.strongFlagged })),
+  );
+
+  return {
+    fast,
+    strong,
+    flagRegressionRate,
+    passed: evaluateDualTierAlignment(fast, strong, flagRegressionRate),
   };
 }

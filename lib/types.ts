@@ -9,12 +9,35 @@ export const testCaseCategorySchema = z.enum([
   'regression',
 ]);
 
+export const sandboxContractSchema = z.enum(['message-json', 'harness-json']);
+
+export const capturedToolCallSchema = z.object({
+  name: z.string().min(1),
+  input: z.unknown().optional(),
+});
+
+export const kbFixtureSchema = z.record(z.string(), z.unknown());
+
+export const agentTargetSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().optional(),
+  url: z.string().url(),
+  description: z.string().min(1),
+  contract: sandboxContractSchema.optional(),
+  /** Per-agent KB overlay for harness-json eval (overrides defaultKbFixture). */
+  kbFixture: kbFixtureSchema.optional(),
+});
+
 export const testCaseSchema = z.object({
   id: z.string().min(1),
   category: testCaseCategorySchema,
+  /** Target agent when evalMode is agent-matrix. */
+  agentId: z.string().min(1).optional(),
   input: z.string().min(1),
   expectedBehavior: z.string().min(1),
   scoringNotes: z.string().optional(),
+  /** Per-test-case KB overlay (highest precedence). */
+  kbFixture: kbFixtureSchema.optional(),
 });
 
 export const sandboxResultSchema = z.object({
@@ -23,8 +46,18 @@ export const sandboxResultSchema = z.object({
   latencyMs: z.number().nonnegative().nullable(),
   timedOut: z.boolean(),
   error: z.string().nullable(),
+  /** True when HTTP adapter rejected prompt before model (e.g. 422 full_path_required). */
+  scopeRejected: z.boolean().optional(),
   /** True when sandbox isolation failed and the response came from a direct HTTP POST. */
   unverified: z.boolean().optional(),
+  contract: sandboxContractSchema.optional(),
+  agentId: z.string().optional(),
+  toolCalls: z.array(capturedToolCallSchema).optional(),
+  structured: z.unknown().optional(),
+  validationOk: z.boolean().optional(),
+  /** Harness validation.errors from aidea (schema/tool discipline, not narrative hallucination). */
+  validationErrors: z.array(z.string()).optional(),
+  validationWarnings: z.array(z.string()).optional(),
 });
 
 export const rubricScoresSchema = z.object({
@@ -32,6 +65,19 @@ export const rubricScoresSchema = z.object({
   safety: z.number().int().min(1).max(5),
   scopeAdherence: z.number().int().min(1).max(5),
   confidenceCalibration: z.number().int().min(1).max(5),
+});
+
+export const tierRubricResultSchema = z.object({
+  scores: rubricScoresSchema,
+  total: z.number().int().min(0).max(20),
+  flagged: z.boolean(),
+  reasoning: z.string(),
+});
+
+export const multiModelScoreSchema = z.object({
+  fast: tierRubricResultSchema,
+  strong: tierRubricResultSchema,
+  flagAgreement: z.boolean(),
 });
 
 export const testResultSchema = z.object({
@@ -42,6 +88,7 @@ export const testResultSchema = z.object({
   total: z.number().int().min(0).max(20).nullable(),
   flagged: z.boolean(),
   reasoning: z.string().nullable(),
+  multiModelScore: multiModelScoreSchema.optional(),
 });
 
 export const reportSchema = z.object({
@@ -61,6 +108,19 @@ export const evalRunInputSchema = z.object({
   url: z.string().url(),
   description: z.string().min(1),
   caseCount: z.number().int().min(1).max(50),
+  /** standard = fast Haiku generation; adversarial = strong-tier red-team generation */
+  generationMode: z.enum(['standard', 'adversarial']).default('standard'),
+  /** strong = sonnet scorer only; dual = score with fast + strong and compare */
+  scoringMode: z.enum(['strong', 'dual']).default('dual'),
+  /** single = one target; agent-matrix = per-agent contracts in agents[] */
+  evalMode: z.enum(['single', 'agent-matrix']).optional(),
+  /** Per-agent persona contracts for agent-matrix eval. */
+  agents: z.array(agentTargetSchema).min(1).optional(),
+  /** Default KB overlay for harness-json eval (overridden by agent or test-case kbFixture). */
+  defaultKbFixture: kbFixtureSchema.optional(),
+  /** Default message-json; harness-json for POST /api/eval/agent style targets. */
+  sandboxContract: sandboxContractSchema.default('message-json'),
+  sandboxTimeoutMs: z.number().int().min(5_000).max(120_000).default(10_000),
 });
 
 export const runStatusSchema = z.enum([
@@ -124,6 +184,12 @@ export const evalRunUpdateSchema = evalRunSchema
   .partial()
   .strict();
 
+export type SandboxContract = z.infer<typeof sandboxContractSchema>;
+export type CapturedToolCall = z.infer<typeof capturedToolCallSchema>;
+export type KbFixture = z.infer<typeof kbFixtureSchema>;
+export type AgentTarget = z.infer<typeof agentTargetSchema>;
+export type TierRubricResult = z.infer<typeof tierRubricResultSchema>;
+export type MultiModelScore = z.infer<typeof multiModelScoreSchema>;
 export type TestCaseCategory = z.infer<typeof testCaseCategorySchema>;
 export type TestCase = z.infer<typeof testCaseSchema>;
 export type SandboxResult = z.infer<typeof sandboxResultSchema>;
@@ -131,7 +197,8 @@ export type RubricScores = z.infer<typeof rubricScoresSchema>;
 export type TestResult = z.infer<typeof testResultSchema>;
 export type Report = z.infer<typeof reportSchema>;
 export type PromptFix = z.infer<typeof promptFixSchema>;
-export type EvalRunInput = z.infer<typeof evalRunInputSchema>;
+export type EvalRunInput = z.output<typeof evalRunInputSchema>;
+export type EvalRunInputCreate = z.input<typeof evalRunInputSchema>;
 export type RunStatus = z.infer<typeof runStatusSchema>;
 export type StepMetrics = z.infer<typeof stepMetricsSchema>;
 export type RunMetrics = z.infer<typeof runMetricsSchema>;

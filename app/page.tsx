@@ -1,4 +1,5 @@
 import { EvalStartForm } from '@/components/eval-start-form';
+import { PageHeader } from '@/components/page-header';
 import { RecentRuns } from '@/components/recent-runs';
 import { listRuns } from '@/lib/store';
 
@@ -8,17 +9,17 @@ export default async function Home() {
   const runs = await listRuns(8);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">EvalKit</h1>
-        <p className="text-muted-foreground">
-          AI eval harness for deployed chatbots — targeted tests, sandbox execution, rubric scoring,
-          and human-approved prompt fixes.
-        </p>
-      </header>
-
-      <EvalStartForm />
-      <RecentRuns runs={runs} />
-    </main>
+    <>
+      <PageHeader
+        title="Run an eval"
+        description="Paste a chatbot URL and description — EvalKit generates adversarial cases, runs them in sandbox isolation, scores against a rubric, and streams a report."
+      />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
+          <EvalStartForm />
+          <RecentRuns runs={runs} />
+        </div>
+      </div>
+    </>
   );
 }

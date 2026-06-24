@@ -20,6 +20,10 @@ describe('parseEvalCommandText', () => {
       url: 'https://example.com/chat',
       description: 'Fintech support bot',
       caseCount: 12,
+      generationMode: 'standard',
+      scoringMode: 'dual',
+      sandboxContract: 'message-json',
+      sandboxTimeoutMs: 10_000,
     });
   });
 

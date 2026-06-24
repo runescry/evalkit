@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function RunReportSkeleton() {
   return (
-    <Card className="w-full">
+    <Card className="eval-card w-full shadow-sm">
       <CardHeader className="space-y-2">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-4 w-full max-w-xl" />

@@ -31,6 +31,10 @@ const sampleRun = {
     url: 'https://example.com/chat',
     description: 'Support bot',
     caseCount: 5,
+    generationMode: 'standard' as const,
+    scoringMode: 'dual' as const,
+    sandboxContract: 'message-json' as const,
+    sandboxTimeoutMs: 10_000,
   },
   testCases: [],
   results: [],
@@ -66,6 +70,42 @@ describe('POST /api/runs', () => {
     });
     expect(storeMocks.createRun).toHaveBeenCalledWith(sampleRun.input);
     expect(startMock).toHaveBeenCalledWith(expect.any(Function), [sampleRun.id]);
+  });
+
+  it('accepts agent-matrix input with agents array', async () => {
+    const matrixInput = {
+      url: 'https://aidea-co.vercel.app/api/eval/agent',
+      description: 'Persona matrix eval',
+      caseCount: 12,
+      evalMode: 'agent-matrix',
+      sandboxContract: 'harness-json',
+      sandboxTimeoutMs: 90000,
+      agents: [
+        {
+          id: 'inbox-triage',
+          url: 'https://aidea-co.vercel.app/api/eval/agent',
+          description: 'Inbox triage agent contract',
+          contract: 'harness-json',
+        },
+      ],
+    };
+
+    const request = new Request('http://localhost/api/runs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(matrixInput),
+    });
+
+    storeMocks.createRun.mockResolvedValue({ ...sampleRun, input: matrixInput });
+
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+    expect(storeMocks.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        evalMode: 'agent-matrix',
+        agents: expect.arrayContaining([expect.objectContaining({ id: 'inbox-triage' })]),
+      }),
+    );
   });
 
   it('returns 400 for invalid JSON', async () => {

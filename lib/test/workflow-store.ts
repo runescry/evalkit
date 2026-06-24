@@ -1,4 +1,4 @@
-import type { EvalRun, EvalRunInput, EvalRunUpdate } from '@/lib/types';
+import type { EvalRun, EvalRunInputCreate, EvalRunUpdate } from '@/lib/types';
 import { evalRunInputSchema, evalRunSchema } from '@/lib/types';
 
 function createRunId(): string {
@@ -9,7 +9,7 @@ export function createInMemoryWorkflowStore() {
   const runs = new Map<string, EvalRun>();
 
   return {
-    async createRun(input: EvalRunInput): Promise<EvalRun> {
+    async createRun(input: EvalRunInputCreate): Promise<EvalRun> {
       const parsedInput = evalRunInputSchema.parse(input);
       const run = evalRunSchema.parse({
         id: createRunId(),

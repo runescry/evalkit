@@ -1,14 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { evalRunInputSchema } from '@/lib/types';
+import { evalRunInputSchema, type EvalRunInput } from '@/lib/types';
 
 const SLACK_SIGNATURE_VERSION = 'v0';
 const MAX_SIGNATURE_AGE_SEC = 60 * 5;
 
-export type SlackEvalCommand = {
-  url: string;
-  description: string;
-  caseCount: number;
-};
+export type SlackEvalCommand = EvalRunInput;
 
 export type SlackPostMessageParams = {
   token: string;

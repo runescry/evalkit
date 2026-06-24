@@ -14,15 +14,15 @@ export function RunCostSummary({ metrics }: RunCostSummaryProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Cost & latency</CardTitle>
+    <Card className="eval-card shadow-sm">
+      <CardHeader className="border-b border-border/60">
+        <CardTitle className="text-title">Cost & latency</CardTitle>
         <CardDescription>
           {formatCostUsd(metrics.totalCost)} total · {metrics.totalLatencyMs.toLocaleString()} ms ·{' '}
           {metrics.aiCallCount} AI call{metrics.aiCallCount === 1 ? '' : 's'}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-5">
         <ul className="space-y-1 text-sm text-muted-foreground">
           {metrics.steps.map((step) => (
             <li key={step.step} className="flex justify-between gap-4">

@@ -1,10 +1,16 @@
 import { Output } from 'ai';
 import { z } from 'zod';
-import { generateWithTier } from '@/lib/ai';
+import { generateWithTier, type ModelTier } from '@/lib/ai';
+import {
+  applyDualScoreToResult,
+  tierResultFromScored,
+} from '@/lib/multi-model-eval';
+import { descriptionForTestCase } from '@/lib/agent-matrix';
 import { SCORE_RESULTS_PROMPT, getScoreResultsPromptMeta } from '@/lib/prompts';
 import {
   rubricScoresSchema,
   testResultSchema,
+  type EvalRunInput,
   type RubricScores,
   type TestCase,
   type TestResult,
@@ -19,9 +25,11 @@ const llmScoreResponseSchema = z.object({
 });
 
 export type ScoreTestResultsParams = {
+  runInput: EvalRunInput;
   description: string;
   testCases: TestCase[];
   results: TestResult[];
+  scoringMode?: 'strong' | 'dual';
 };
 
 export type ScoreTestResultsResult = {
@@ -72,6 +80,7 @@ async function scoreSingleResult(
   description: string,
   testCase: TestCase,
   result: TestResult,
+  tier: ModelTier,
 ): Promise<{ scores: RubricScores; reasoning: string }> {
   const userPrompt = SCORE_RESULTS_PROMPT.buildUserPrompt({
     description,
@@ -81,8 +90,8 @@ async function scoreSingleResult(
   });
 
   const aiResult = await generateWithTier({
-    tier: 'strong',
-    step: 'score-results',
+    tier,
+    step: tier === 'fast' ? 'score-results-fast' : 'score-results',
     runId,
     system: SCORE_RESULTS_PROMPT.system,
     prompt: userPrompt,
@@ -111,6 +120,7 @@ async function scoreTestResultsWithAi(
   const promptVersion = getScoreResultsPromptMeta();
   const testCaseById = indexTestCases(params.testCases);
   const updatedResults = [...params.results];
+  const scoringMode = params.scoringMode ?? 'strong';
 
   for (let index = 0; index < params.results.length; index++) {
     const result = params.results[index]!;
@@ -119,13 +129,26 @@ async function scoreTestResultsWithAi(
       throw new Error(`Missing test case for result: ${result.testCaseId}`);
     }
 
-    const { scores, reasoning } = await scoreSingleResult(
-      runId,
-      params.description,
-      testCase,
-      result,
-    );
-    updatedResults[index] = buildScoredTestResult(result, scores, reasoning);
+    const caseDescription = descriptionForTestCase(params.runInput, testCase);
+
+    if (scoringMode === 'dual') {
+      const [fastOut, strongOut] = await Promise.all([
+        scoreSingleResult(runId, caseDescription, testCase, result, 'fast'),
+        scoreSingleResult(runId, caseDescription, testCase, result, 'strong'),
+      ]);
+      const fastTier = tierResultFromScored(fastOut.scores, fastOut.reasoning);
+      const strongTier = tierResultFromScored(strongOut.scores, strongOut.reasoning);
+      updatedResults[index] = applyDualScoreToResult(result, fastTier, strongTier);
+    } else {
+      const { scores, reasoning } = await scoreSingleResult(
+        runId,
+        caseDescription,
+        testCase,
+        result,
+        'strong',
+      );
+      updatedResults[index] = buildScoredTestResult(result, scores, reasoning);
+    }
     await updateRun(runId, { results: [...updatedResults] });
   }
 

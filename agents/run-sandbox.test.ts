@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { evalRunInputSchema } from '@/lib/types';
+import fintechFixture from '@/fixtures/fintech-chatbot.json';
 import {
   SANDBOX_FANOUT,
   SANDBOX_TIMEOUT_MS,
   buildUnscoredTestResult,
   executeDirectHttpRequest,
   parseSandboxCommandOutput,
+  payloadToSandboxResult,
+  responseTextFromPayload,
   runTestCaseInSandbox,
   runTestCasesInSandbox,
   targetDomain,
@@ -22,6 +26,10 @@ vi.mock('@vercel/sandbox', () => ({
     create: sandboxMocks.create,
   },
 }));
+
+function defaultRunInput() {
+  return evalRunInputSchema.parse(fintechFixture);
+}
 
 const testCase: TestCase = {
   id: 'tc_run_1',
@@ -92,7 +100,7 @@ describe('runTestCaseInSandbox', () => {
 
   it('uses one Vercel sandbox per case with a 10s timeout', async () => {
     const result = await runTestCaseInSandbox({
-      targetUrl: 'https://example.com/chat',
+      runInput: defaultRunInput(),
       testCase,
     });
 
@@ -104,8 +112,8 @@ describe('runTestCaseInSandbox', () => {
       expect.objectContaining({
         cmd: 'node',
         env: expect.objectContaining({
-          EVALKIT_TARGET_URL: 'https://example.com/chat',
-          EVALKIT_MESSAGE: testCase.input,
+          EVALKIT_TARGET_URL: fintechFixture.url,
+          EVALKIT_REQUEST_BODY: JSON.stringify({ message: testCase.input }),
           EVALKIT_TIMEOUT_MS: String(SANDBOX_TIMEOUT_MS),
         }),
       }),
@@ -125,12 +133,12 @@ describe('runTestCaseInSandbox', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await runTestCaseInSandbox({
-      targetUrl: 'https://example.com/chat',
+      runInput: defaultRunInput(),
       testCase,
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://example.com/chat',
+      fintechFixture.url,
       expect.objectContaining({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -151,7 +159,9 @@ describe('runTestCaseInSandbox', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const payload = await executeDirectHttpRequest('https://example.com/chat', 'ping');
+    const payload = await executeDirectHttpRequest('https://example.com/chat', {
+      message: 'ping',
+    });
 
     expect(payload).toMatchObject({
       statusCode: 502,
@@ -175,7 +185,7 @@ describe('runTestCaseInSandbox', () => {
     );
 
     const result = await runTestCaseInSandbox({
-      targetUrl: 'https://example.com/chat',
+      runInput: defaultRunInput(),
       testCase,
     });
 
@@ -214,10 +224,64 @@ describe('runTestCasesInSandbox', () => {
       input: `message ${index + 1}`,
     }));
 
-    const results = await runTestCasesInSandbox('https://example.com/chat', cases, SANDBOX_FANOUT);
+    const results = await runTestCasesInSandbox(defaultRunInput(), cases, SANDBOX_FANOUT);
 
     expect(results).toHaveLength(7);
     expect(maxInFlight).toBeLessThanOrEqual(SANDBOX_FANOUT);
     expect(globalThis.__EVALKIT_RUN_SANDBOX__).toHaveBeenCalledTimes(7);
+  });
+});
+
+describe('sandbox response normalization', () => {
+  it('extracts JSON response wrapper from direct HTTP', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      text: async () => JSON.stringify({ response: 'Hello', mode: 'fast' }),
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const payload = await executeDirectHttpRequest('https://example.com/chat', {
+      message: 'hi',
+    });
+    expect(responseTextFromPayload(payload)).toBe('Hello');
+    expect(payloadToSandboxResult(payload, false, 'message-json').scopeRejected).toBeUndefined();
+  });
+
+  it('flags 422 full_path_required as scope reject', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 422,
+      text: async () =>
+        JSON.stringify({ error: 'full_path_required', hint: 'fast-chat only' }),
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const payload = await executeDirectHttpRequest('https://example.com/chat', {
+      message: 'send email',
+    });
+    const sandbox = payloadToSandboxResult(payload, false, 'message-json');
+    expect(sandbox.scopeRejected).toBe(true);
+    expect(responseTextFromPayload(payload)).toContain('full_path_required');
+  });
+
+  it('parses harness-json toolCalls from direct HTTP', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          response: 'Triage complete',
+          toolCalls: [{ name: 'gmail_read', input: { query: 'is:unread' } }],
+          validation: { ok: true },
+        }),
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const payload = await executeDirectHttpRequest('https://example.com/api/eval/agent', {
+      agentId: 'inbox-triage',
+      mission: 'triage',
+    });
+    const sandbox = payloadToSandboxResult(payload, false, 'harness-json', 'inbox-triage');
+    expect(sandbox.toolCalls).toHaveLength(1);
+    expect(sandbox.validationOk).toBe(true);
+    expect(responseTextFromPayload(payload, 'harness-json')).toBe('Triage complete');
   });
 });
