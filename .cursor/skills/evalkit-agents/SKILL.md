@@ -27,6 +27,7 @@ Use `generateText` with `Output.object({ schema: zodSchema })` — not raw strin
 
 - Templates live in `lib/prompts.ts`
 - Bump version when changing system prompts; store SHA-256 hash on run — see `docs/PROMPTS.md`
+- UI reconstruction: `lib/run-prompts.ts` + `RunPromptsPanel` on `/runs/[id]`
 
 ## Tests
 

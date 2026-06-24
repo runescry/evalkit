@@ -4,8 +4,16 @@ import { assignFixIds, selectFlaggedResults, suggestFixes } from './suggest-fixe
 
 const generateWithTierMock = vi.hoisted(() => vi.fn());
 
+const traceMocks = vi.hoisted(() => ({
+  recordLlmTrace: vi.fn(),
+}));
+
 vi.mock('@/lib/ai', () => ({
   generateWithTier: generateWithTierMock,
+}));
+
+vi.mock('@/lib/llm-trace', () => ({
+  recordLlmTrace: traceMocks.recordLlmTrace,
 }));
 
 const params = {
@@ -101,6 +109,7 @@ describe('assignFixIds', () => {
 describe('suggestFixes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    traceMocks.recordLlmTrace.mockResolvedValue(undefined);
     delete globalThis.__EVALKIT_SUGGEST_FIXES__;
   });
 

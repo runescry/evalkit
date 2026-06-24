@@ -110,6 +110,20 @@ curl -s https://<your-production-domain>/api/health | jq
 
 Expect `healthy: true` when AI Gateway credits and env vars are configured.
 
+### Deployment Checks (GitHub → Vercel)
+
+When **Settings → Git → Deployment Checks** require GitHub Actions (`Quality gates`, `Gitleaks`, `Dependency audit`, `SAST`):
+
+| Deploy method | Checks |
+|---------------|--------|
+| Merge / push to `main` | GitHub reports statuses → Vercel promotes production alias |
+| `npx vercel deploy` (preview) | No GitHub commit linkage required |
+| `npx vercel deploy --prod` from laptop | **No commit SHA** — checks can show “Running” forever; CLI may timeout |
+
+**Production:** use Git integration (`git push` to `main`). Use preview CLI deploys for quick experiments only.
+
+If an old production deployment shows stuck checks, promote or alias the latest **git-linked** deployment in the Vercel dashboard (or `vercel alias set <git-deploy-url> <production-domain>`).
+
 ### Production environment checklist
 
 Set these in Vercel → **Settings → Environment Variables** for **Production** (and Preview if you test Slack or sandboxes on previews):

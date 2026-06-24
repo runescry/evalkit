@@ -1,4 +1,5 @@
 import { streamWithTier } from '@/lib/ai';
+import { recordLlmTrace } from '@/lib/llm-trace';
 import { recordAiCallWithSpan } from '@/lib/observability';
 import { BUILD_REPORT_PROMPT, getBuildReportPromptMeta } from '@/lib/prompts';
 import { reportSchema, type Report, type TestCase, type TestResult } from '@/lib/types';
@@ -96,6 +97,16 @@ async function buildReportWithAi(
 
   const streamMeta = await stream.evalkit;
   await recordAiCallWithSpan(runId, streamMeta);
+
+  await recordLlmTrace(runId, {
+    step: 'build-report',
+    tier: 'strong',
+    system: BUILD_REPORT_PROMPT.system,
+    user: userPrompt,
+    assistant: report.markdown,
+    assistantFormat: 'markdown',
+    evalkit: streamMeta,
+  });
 
   await updateRun(runId, { report });
 

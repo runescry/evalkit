@@ -1,6 +1,7 @@
 import { Output } from 'ai';
 import { z } from 'zod';
 import { generateWithTier } from '@/lib/ai';
+import { recordLlmTrace } from '@/lib/llm-trace';
 import { SUGGEST_FIXES_PROMPT, getSuggestFixesPromptMeta } from '@/lib/prompts';
 import { promptFixSchema, type PromptFix, type TestCase, type TestResult } from '@/lib/types';
 
@@ -101,6 +102,16 @@ async function suggestFixesWithAi(
 
   const parsed = suggestFixesResponseSchema.parse(result.output);
   const fixes = assignFixIds(parsed.fixes, runId);
+
+  await recordLlmTrace(runId, {
+    step: 'suggest-fixes',
+    tier: 'strong',
+    system: SUGGEST_FIXES_PROMPT.system,
+    user: userPrompt,
+    assistant: JSON.stringify(parsed, null, 2),
+    assistantFormat: 'json',
+    evalkit: result.evalkit,
+  });
 
   return { fixes, promptVersion };
 }

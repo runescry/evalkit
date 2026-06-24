@@ -1,11 +1,13 @@
 import { Output } from 'ai';
 import { z } from 'zod';
-import { generateWithTier, type ModelTier } from '@/lib/ai';
+import { generateWithTier, type EvalkitCallMeta, type ModelTier } from '@/lib/ai';
+import { recordLlmTrace } from '@/lib/llm-trace';
 import {
   applyDualScoreToResult,
   tierResultFromScored,
 } from '@/lib/multi-model-eval';
 import { descriptionForTestCase } from '@/lib/agent-matrix';
+import { recordAiCallWithSpan } from '@/lib/observability';
 import { SCORE_RESULTS_PROMPT, getScoreResultsPromptMeta } from '@/lib/prompts';
 import {
   rubricScoresSchema,
@@ -75,13 +77,24 @@ function indexTestCases(testCases: TestCase[]): Map<string, TestCase> {
   return new Map(testCases.map((testCase) => [testCase.id, testCase]));
 }
 
+type ScoreSingleResult = {
+  scores: RubricScores;
+  reasoning: string;
+  evalkit: EvalkitCallMeta;
+  system: string;
+  user: string;
+  step: string;
+  tier: ModelTier;
+};
+
 async function scoreSingleResult(
-  runId: string,
   description: string,
   testCase: TestCase,
   result: TestResult,
   tier: ModelTier,
-): Promise<{ scores: RubricScores; reasoning: string }> {
+  runId?: string,
+): Promise<ScoreSingleResult> {
+  const step = tier === 'fast' ? 'score-results-fast' : 'score-results';
   const userPrompt = SCORE_RESULTS_PROMPT.buildUserPrompt({
     description,
     testCase,
@@ -91,7 +104,7 @@ async function scoreSingleResult(
 
   const aiResult = await generateWithTier({
     tier,
-    step: tier === 'fast' ? 'score-results-fast' : 'score-results',
+    step,
     runId,
     system: SCORE_RESULTS_PROMPT.system,
     prompt: userPrompt,
@@ -99,7 +112,35 @@ async function scoreSingleResult(
   });
 
   const parsed = llmScoreResponseSchema.parse(aiResult.output);
-  return parsed;
+  return {
+    ...parsed,
+    evalkit: aiResult.evalkit,
+    system: SCORE_RESULTS_PROMPT.system,
+    user: userPrompt,
+    step,
+    tier,
+  };
+}
+
+async function recordScoreTrace(
+  runId: string,
+  testCaseId: string,
+  scored: ScoreSingleResult,
+): Promise<void> {
+  await recordLlmTrace(runId, {
+    step: scored.step,
+    tier: scored.tier,
+    testCaseId,
+    system: scored.system,
+    user: scored.user,
+    assistant: JSON.stringify(
+      { scores: scored.scores, reasoning: scored.reasoning },
+      null,
+      2,
+    ),
+    assistantFormat: 'json',
+    evalkit: scored.evalkit,
+  });
 }
 
 export async function scoreTestResults(
@@ -133,21 +174,21 @@ async function scoreTestResultsWithAi(
 
     if (scoringMode === 'dual') {
       const [fastOut, strongOut] = await Promise.all([
-        scoreSingleResult(runId, caseDescription, testCase, result, 'fast'),
-        scoreSingleResult(runId, caseDescription, testCase, result, 'strong'),
+        scoreSingleResult(caseDescription, testCase, result, 'fast'),
+        scoreSingleResult(caseDescription, testCase, result, 'strong'),
       ]);
+      await recordAiCallWithSpan(runId, fastOut.evalkit);
+      await recordAiCallWithSpan(runId, strongOut.evalkit);
+      await recordScoreTrace(runId, testCase.id, fastOut);
+      await recordScoreTrace(runId, testCase.id, strongOut);
+
       const fastTier = tierResultFromScored(fastOut.scores, fastOut.reasoning);
       const strongTier = tierResultFromScored(strongOut.scores, strongOut.reasoning);
       updatedResults[index] = applyDualScoreToResult(result, fastTier, strongTier);
     } else {
-      const { scores, reasoning } = await scoreSingleResult(
-        runId,
-        caseDescription,
-        testCase,
-        result,
-        'strong',
-      );
-      updatedResults[index] = buildScoredTestResult(result, scores, reasoning);
+      const scored = await scoreSingleResult(caseDescription, testCase, result, 'strong', runId);
+      await recordScoreTrace(runId, testCase.id, scored);
+      updatedResults[index] = buildScoredTestResult(result, scored.scores, scored.reasoning);
     }
     await updateRun(runId, { results: [...updatedResults] });
   }

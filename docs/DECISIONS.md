@@ -76,7 +76,7 @@ Format: ADR-lite. New decisions append at the bottom.
 
 **Context:** Vercel Sandbox creation or execution can fail (quota, OIDC, regional outage). Hard-failing the entire eval run wastes generated test cases and blocks scoring.
 
-**Decision:** On sandbox infra failure, fall back to a direct HTTP POST to the target URL with the same JSON payload (`{ message }`) and timeout. Mark `sandbox.unverified: true` on those results so reports and operators know isolation was not guaranteed.
+**Decision:** On sandbox infra failure, fall back to a direct HTTP POST to the target URL with the same JSON payload (`{ message }` for `message-json`, or harness body for `harness-json`) and timeout. Mark `sandbox.unverified: true` on those results so reports and operators know isolation was not guaranteed.
 
 **Consequences:** Fallback responses may differ from sandboxed ones (e.g. IP allowlists, SSRF posture). Scoring still proceeds; operators should treat unverified results with lower trust. Implemented in `agents/run-sandbox.ts`.
 
@@ -114,4 +114,4 @@ Format: ADR-lite. New decisions append at the bottom.
 
 **Decision:** Add `evalMode: agent-matrix` with `agents[]` (per-agent URL + description + optional `sandboxContract`), `agentId` on each `TestCase`, `sandboxTimeoutMs` up to 120s, and `harness-json` contract for targets that return `{ response, toolCalls, validation }`. Scoring resolves description per agent; reports group by `agentId`.
 
-**Consequences:** Harness eval is slower and costlier than fast-chat (lower sandbox fan-out when timeout > 30s). Requires target-side eval adapter (`POST /api/eval/agent` on aidea). Full 36-agent matrix deferred to Phase 2 nightly CI; Phase 1 pilots three agents.
+**Consequences:** Harness eval is slower and costlier than fast-chat (fan-out 2 when `sandboxTimeoutMs` > 30s). Requires target-side eval adapter (`POST /api/eval/agent` on aidea). Phase 1 pilots three agents (12 cases in `fixtures/aidea-agent-matrix-pilot.json`). Full 36-agent matrix deferred to Phase 2 nightly CI.

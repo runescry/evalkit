@@ -4,7 +4,7 @@ import { generateTestCases } from '@/agents/generate-cases';
 import { runTestCasesInSandbox } from '@/agents/run-sandbox';
 import { scoreTestResults } from '@/agents/score-results';
 import { suggestFixes } from '@/agents/suggest-fixes';
-import { observeWorkflowStep } from '@/lib/observability';
+import { observeWorkflowStep, backfillRunMetricsCosts } from '@/lib/observability';
 import { getRun, updateRun } from './store-bridge';
 import type { EvalRun, TestCase, TestResult } from '@/lib/types';
 
@@ -96,6 +96,8 @@ export async function scoreResultsStep(runId: string): Promise<TestResult[]> {
         },
       });
 
+      await backfillRunMetricsCosts(runId);
+
       return results;
     } catch (error) {
       if (error instanceof FatalError) {
@@ -129,6 +131,8 @@ export async function buildReportStep(runId: string): Promise<void> {
           buildReport: promptVersion,
         },
       });
+
+      await backfillRunMetricsCosts(runId);
     } catch (error) {
       if (error instanceof FatalError) {
         throw error;
@@ -179,6 +183,8 @@ export async function applyFixesStep(runId: string): Promise<void> {
         approvedAt: Date.now(),
         status: 'complete',
       });
+
+      await backfillRunMetricsCosts(runId);
     } catch (error) {
       if (error instanceof FatalError) {
         throw error;

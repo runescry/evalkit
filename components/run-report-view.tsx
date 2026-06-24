@@ -11,6 +11,7 @@ import { ReportMarkdown } from '@/components/report-markdown';
 import { RunCostSummary } from '@/components/run-cost-summary';
 import { RunActivityStream } from '@/components/run-activity-stream';
 import { RunProgress } from '@/components/run-progress';
+import { LlmTracePanel } from '@/components/llm-trace-panel';
 import { RunReportSkeleton } from '@/components/run-report-skeleton';
 import { TierComparison } from '@/components/tier-comparison';
 import { Badge } from '@/components/ui/badge';
@@ -63,13 +64,61 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
   );
 
   useEffect(() => {
-    if (streamDone) {
-      void fetchRunMetrics(run.id).then((nextMetrics) => {
-        if (nextMetrics) {
-          setMetrics(nextMetrics);
+    const terminal =
+      run.status === 'awaiting_approval' || run.status === 'complete' || run.status === 'failed';
+
+    let metricsPollId: number | undefined;
+
+    async function refreshMetrics(): Promise<RunMetrics | undefined> {
+      const nextMetrics = await fetchRunMetrics(run.id);
+      if (nextMetrics) {
+        setMetrics(nextMetrics);
+      }
+      const fresh = await fetchRun(run.id).catch(() => null);
+      if (fresh?.metrics) {
+        setMetrics(fresh.metrics);
+      }
+      if (fresh) {
+        setRun(fresh);
+      }
+      return fresh?.metrics ?? nextMetrics;
+    }
+
+    function shouldKeepMetricsPoll(next: RunMetrics | undefined): boolean {
+      if (!next) {
+        return !terminal;
+      }
+      if (!terminal) {
+        return next.aiCallCount === 0;
+      }
+      return next.totalCost === 0 && next.aiCallCount > 0;
+    }
+
+    function startMetricsPoll() {
+      void refreshMetrics().then((next) => {
+        if (!shouldKeepMetricsPoll(next)) {
+          return;
         }
+        metricsPollId = window.setInterval(() => {
+          void refreshMetrics().then((polled) => {
+            if (!shouldKeepMetricsPoll(polled)) {
+              if (metricsPollId != null) {
+                window.clearInterval(metricsPollId);
+                metricsPollId = undefined;
+              }
+            }
+          });
+        }, 2000);
       });
-      return;
+    }
+
+    if (terminal) {
+      startMetricsPoll();
+      return () => {
+        if (metricsPollId != null) {
+          window.clearInterval(metricsPollId);
+        }
+      };
     }
 
     const poll = window.setInterval(() => {
@@ -90,6 +139,8 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           // SSE remains primary; polling is best-effort for step counts.
         });
     }, 1500);
+
+    startMetricsPoll();
 
     const unsubscribe = subscribeRunStream(run.id, {
       onRun: (data) => {
@@ -118,9 +169,12 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
 
     return () => {
       window.clearInterval(poll);
+      if (metricsPollId != null) {
+        window.clearInterval(metricsPollId);
+      }
       unsubscribe();
     };
-  }, [run.id, streamDone]);
+  }, [run.id, run.status, streamDone]);
 
   async function handleApprovalResolved() {
     try {
@@ -192,7 +246,7 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           ) : null}
         </div>
 
-        <RunCostSummary metrics={metrics} />
+        <RunCostSummary metrics={metrics} runStatus={run.status} isLive={isRunning} />
 
         <RunProgress run={run} streamingReport={streamingReport} />
 
@@ -223,6 +277,8 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
             </CardContent>
           </Card>
         ) : null}
+
+        <LlmTracePanel run={run} />
 
         {run.error ? (
           <Card className="eval-card border-destructive/40 shadow-sm">

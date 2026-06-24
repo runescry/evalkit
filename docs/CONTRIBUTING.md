@@ -17,7 +17,7 @@ Configure on `main`:
 - Require status checks: `Quality gates`, `Dependency audit`, `Gitleaks`, `SAST`
 - Do not allow force pushes
 
-Full pipeline: [CICD.md](./CICD.md) (local → Git → Vercel).
+Full pipeline: [CICD.md](./CICD.md) (local → Git → Vercel). **Production deploys** go through Git push to `main` when Vercel Deployment Checks are enabled — not `vercel deploy --prod` from a laptop.
 
 ## Local setup
 

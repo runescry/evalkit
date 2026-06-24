@@ -143,6 +143,26 @@ export const stepMetricsSchema = z.object({
   outputTokens: z.number().int().nonnegative(),
   totalCost: z.number().nonnegative(),
   callCount: z.number().int().nonnegative(),
+  /** Gateway IDs pending cost backfill when totalCost was missing on the response. */
+  generationIds: z.array(z.string().min(1)).optional(),
+});
+
+export const llmTraceMessageSchema = z.object({
+  role: z.enum(['system', 'user', 'assistant']),
+  content: z.string(),
+  format: z.enum(['text', 'json', 'markdown']).optional(),
+});
+
+export const llmTraceEntrySchema = z.object({
+  id: z.string().min(1),
+  step: z.string().min(1),
+  tier: z.enum(['fast', 'strong']).optional(),
+  testCaseId: z.string().min(1).optional(),
+  modelId: z.string().nullable().optional(),
+  latencyMs: z.number().nonnegative().optional(),
+  totalCost: z.number().nonnegative().nullable().optional(),
+  generationId: z.string().nullable().optional(),
+  messages: z.array(llmTraceMessageSchema).min(1),
 });
 
 export const runMetricsSchema = z.object({
@@ -166,6 +186,7 @@ export const evalRunSchema = z.object({
   error: z.string().nullable(),
   promptVersions: z.record(z.string(), promptVersionSchema).optional(),
   metrics: runMetricsSchema.optional(),
+  llmTrace: z.array(llmTraceEntrySchema).optional(),
 });
 
 /** Fields agents may patch via `updateRun`. */
@@ -180,6 +201,7 @@ export const evalRunUpdateSchema = evalRunSchema
     error: true,
     promptVersions: true,
     metrics: true,
+    llmTrace: true,
   })
   .partial()
   .strict();
@@ -201,6 +223,8 @@ export type EvalRunInput = z.output<typeof evalRunInputSchema>;
 export type EvalRunInputCreate = z.input<typeof evalRunInputSchema>;
 export type RunStatus = z.infer<typeof runStatusSchema>;
 export type StepMetrics = z.infer<typeof stepMetricsSchema>;
+export type LlmTraceMessage = z.infer<typeof llmTraceMessageSchema>;
+export type LlmTraceEntry = z.infer<typeof llmTraceEntrySchema>;
 export type RunMetrics = z.infer<typeof runMetricsSchema>;
 export type EvalRun = z.infer<typeof evalRunSchema>;
 export type EvalRunUpdate = z.infer<typeof evalRunUpdateSchema>;

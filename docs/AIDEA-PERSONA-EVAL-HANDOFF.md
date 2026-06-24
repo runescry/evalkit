@@ -125,9 +125,13 @@ Shipped on aidea `main` (`9f5f395`):
 ### Done
 
 - [x] Agent-matrix mode (`evalMode`, per-agent URLs/contracts, harness-json body)
-- [x] Sandbox response parsing (`toolCalls`, `structured`, `validation.ok`)
-- [x] Pilot fixture with 3 agents + `defaultKbFixture`
+- [x] Sandbox response parsing (`toolCalls`, `structured`, `validation.ok`, `validationErrors` / `validationWarnings`)
+- [x] Pilot fixture — 3 agents, 12 cases, `defaultKbFixture`, 90s timeout
 - [x] **kbFixture passthrough** — `resolveKbFixture` + request body includes overlay
+- [x] Landing **Run agent-matrix pilot** preset (`lib/demo-presets.ts`)
+- [x] Scorer v1.3.0 — harness validation vs narrative hallucination
+- [x] Report UI — flagged findings, dual-tier comparison, **LLM prompts panel** (`lib/run-prompts.ts`)
+- [x] `/architecture` — workflow + backend map for interviews
 
 ### Run pilot E2E
 

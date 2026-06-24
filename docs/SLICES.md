@@ -21,6 +21,8 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 13 | `infra/observability` | complete | Spans, `/metrics`, cost on report |
 | 14 | `feature/auth` | deferred | Rate limit middleware, API keys (post-v1 backlog) |
 | 15 | `release/v1` | complete | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
+| 16 | `feature/post-v1-interview` | complete | Agent-matrix, architecture page, demo presets, dual scoring, LLM prompts panel |
+| 17 | `infra/observability-trace` | complete | Cost metrics hardening, LLM trace panel, Gateway cost backfill |
 
 ## Per-slice test requirements
 
@@ -36,7 +38,7 @@ Run `npm run gates` before every slice commit. Add tests in the slice that intro
 | 04–06 | agent modules | — | — | — | — |
 | 07–09 | components + agents | stream/approve routes | — | report SSE | — |
 | 10 | scorer | — | — | — | `test:eval` ≥85% |
-| 11–15 | per slice | per slice | if store touched | if workflow touched | 10+ |
+| 11–16 | per slice | per slice | if store touched | if workflow touched | 10+ |
 
 Suites with no files yet report `N/A` and pass until the introducing slice lands.
 
@@ -136,3 +138,25 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `docs/DECISIONS.md` — ADR-007 (sandbox fallback), ADR-008 (auth deferred)
 - [x] Production env checklist in `README.md` and `docs/CICD.md`
 - [x] `ROADMAP.md` + this file — Slice 15 complete; Slice 14 deferred
+
+## Slice 16 acceptance (post-v1 / interview polish)
+
+- [x] `evalMode: agent-matrix` — `agents[]`, `harness-json`, `lib/agent-matrix.ts`, per-agent scoring description
+- [x] Demo presets — `lib/demo-presets.ts`, `fixtures/aidea-fast-chat.json`, `fixtures/aidea-agent-matrix-pilot.json`
+- [x] `generationMode: adversarial` + `scoringMode: dual` — `lib/multi-model-eval.ts`, `TierComparison` UI (ADR-009)
+- [x] Scorer v1.3.0 — harness validation vs hallucination; `validationErrors` / `validationWarnings` on sandbox + flagged findings UI
+- [x] `/architecture` — Workflow, Pipeline, Backend map, ADRs, Infrastructure, Eval patterns (`lib/architecture-graph.ts`)
+- [x] Run report UX — app shell, sidebar runs, `RunProgress`, `RunActivityStream`, `FlaggedFindings`
+- [x] `lib/run-prompts.ts` + `RunPromptsPanel` — format-aware LLM prompt display on `/runs/[id]`
+- [x] Docs — `AIDEA-PERSONA-EVAL-HANDOFF.md`, `PERSONA-MATRIX-PHASE2.md`, ADR-009/010, updated ARCHITECTURE/README/CHANGELOG
+- [x] `npm run gates` green including `lib/run-prompts.test.ts`, `lib/architecture-graph.test.ts`
+
+## Slice 17 acceptance (observability + LLM trace)
+
+- [x] Dual-score metrics — parallel `generateWithTier` without `runId`; sequential `recordAiCallWithSpan` after both finish
+- [x] `recordAiCallMetrics` — retry read–merge–write with verification; `generationIds` when Gateway cost pending
+- [x] `backfillRunMetricsCosts` — workflow hooks after score, build-report, apply-fixes; Gateway lookup 8×400ms
+- [x] `lib/llm-trace.ts` — `recordLlmTrace`, `resolveRunLlmTrace`, `groupLlmTraceEntries`; agents record trace per LLM call
+- [x] `LlmTracePanel` on `/runs/[id]` — system/user/assistant; cost summary shows while run active with metrics polling
+- [x] Tests — `lib/llm-trace.test.ts`, observability generationIds, agent mocks updated
+- [x] `npm run gates` green

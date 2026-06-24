@@ -13,13 +13,37 @@ const { generateWithTierMock, updateRunMock } = vi.hoisted(() => ({
   updateRunMock: vi.fn(),
 }));
 
+const traceMocks = vi.hoisted(() => ({
+  recordLlmTrace: vi.fn(),
+  recordAiCallWithSpan: vi.fn(),
+}));
+
 vi.mock('@/lib/ai', () => ({
   generateWithTier: generateWithTierMock,
+}));
+
+vi.mock('@/lib/llm-trace', () => ({
+  recordLlmTrace: traceMocks.recordLlmTrace,
+}));
+
+vi.mock('@/lib/observability', () => ({
+  recordAiCallWithSpan: traceMocks.recordAiCallWithSpan,
 }));
 
 vi.mock('@/workflows/store-bridge', () => ({
   updateRun: updateRunMock,
 }));
+
+const mockEvalkit = {
+  evalkitTier: 'strong' as const,
+  evalkitStep: 'score-results',
+  latencyMs: 12,
+  modelId: 'anthropic/claude-sonnet-4-6',
+  inputTokens: 100,
+  outputTokens: 40,
+  totalCost: 0.001,
+  generationId: 'gen-score',
+};
 
 const runInput = evalRunInputSchema.parse(fintechFixture);
 
@@ -97,7 +121,11 @@ describe('scoreTestResults', () => {
   beforeEach(() => {
     generateWithTierMock.mockReset();
     updateRunMock.mockReset();
+    traceMocks.recordLlmTrace.mockReset();
+    traceMocks.recordAiCallWithSpan.mockReset();
     updateRunMock.mockResolvedValue({});
+    traceMocks.recordLlmTrace.mockResolvedValue(undefined);
+    traceMocks.recordAiCallWithSpan.mockResolvedValue(undefined);
   });
 
   it('calls strong tier with structured output and stores prompt version metadata', async () => {
@@ -108,6 +136,7 @@ describe('scoreTestResults', () => {
         scopeAdherence: 5,
         confidenceCalibration: 5,
       }),
+      evalkit: mockEvalkit,
     });
 
     const result = await scoreTestResults('run_abc', {
@@ -124,6 +153,7 @@ describe('scoreTestResults', () => {
         output: expect.any(Object),
         system: expect.stringContaining('correctness'),
         prompt: expect.stringContaining(baseTestCase.input),
+        runId: 'run_abc',
       }),
     );
     expect(result.results[0]).toMatchObject({
@@ -145,6 +175,7 @@ describe('scoreTestResults', () => {
         scopeAdherence: 3,
         confidenceCalibration: 3,
       }),
+      evalkit: mockEvalkit,
     });
 
     const result = await scoreTestResults('run_flag', {
@@ -180,6 +211,7 @@ describe('scoreTestResults', () => {
           scopeAdherence: 5,
           confidenceCalibration: 4,
         }),
+        evalkit: { ...mockEvalkit, evalkitTier: 'strong' as const, generationId: 'gen-strong' },
       })
       .mockResolvedValueOnce({
         output: mockScoreOutput({
@@ -188,6 +220,7 @@ describe('scoreTestResults', () => {
           scopeAdherence: 5,
           confidenceCalibration: 5,
         }),
+        evalkit: { ...mockEvalkit, evalkitTier: 'strong' as const, generationId: 'gen-strong-2' },
       });
 
     await scoreTestResults('run_incremental', {
@@ -232,6 +265,7 @@ describe('scoreTestResults', () => {
           scopeAdherence: 4,
           confidenceCalibration: 4,
         }),
+        evalkit: { ...mockEvalkit, evalkitTier: 'fast' as const, evalkitStep: 'score-results-fast', generationId: 'gen-fast' },
       })
       .mockResolvedValueOnce({
         output: mockScoreOutput({
@@ -240,6 +274,7 @@ describe('scoreTestResults', () => {
           scopeAdherence: 2,
           confidenceCalibration: 2,
         }),
+        evalkit: { ...mockEvalkit, evalkitTier: 'strong' as const, generationId: 'gen-strong' },
       });
 
     const result = await scoreTestResults('run_dual', {
@@ -252,6 +287,9 @@ describe('scoreTestResults', () => {
 
     expect(generateWithTierMock).toHaveBeenCalledTimes(2);
     expect(generateWithTierMock.mock.calls.map((c) => c[0]?.tier).sort()).toEqual(['fast', 'strong']);
+    expect(generateWithTierMock.mock.calls.every((c) => c[0]?.runId == null)).toBe(true);
+    expect(traceMocks.recordAiCallWithSpan).toHaveBeenCalledTimes(2);
+    expect(traceMocks.recordLlmTrace).toHaveBeenCalledTimes(2);
     expect(result.results[0]?.multiModelScore).toMatchObject({
       flagAgreement: false,
       fast: { total: 16, flagged: false },

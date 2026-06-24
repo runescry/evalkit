@@ -336,7 +336,7 @@ export function ArchitectureDiagram() {
   const [tab, setTab] = useState<ArchitectureTab>('workflow');
   const [selectedStage, setSelectedStage] = useState(0);
   const [selectedWorkflowStep, setSelectedWorkflowStep] = useState(0);
-  const [expandedStage, setExpandedStage] = useState<string | null>('sandbox');
+  const [expandedStage, setExpandedStage] = useState<string | null>(PIPELINE_STAGES[0]!.id);
   const [showAntiPattern, setShowAntiPattern] = useState(true);
   const [expandedAdr, setExpandedAdr] = useState<string | null>('ADR-001');
   const [evalTypeId, setEvalTypeId] = useState(EVAL_TYPE_ENTRIES[0]!.id);
@@ -385,8 +385,17 @@ export function ArchitectureDiagram() {
     setSelectedBackendNode(nodeId);
   }, []);
 
+  const selectWorkflowStep = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(index, WORKFLOW_STEPS.length - 1));
+    setSelectedWorkflowStep(clamped);
+  }, []);
+
   const advanceWorkflowStep = useCallback(() => {
     setSelectedWorkflowStep((s) => Math.min(s + 1, WORKFLOW_STEPS.length - 1));
+  }, []);
+
+  const selectPipelineStage = useCallback((index: number) => {
+    setSelectedStage(Math.max(0, Math.min(index, PIPELINE_STAGES.length - 1)));
   }, []);
 
   const copyCheatSheet = useCallback(async () => {
@@ -402,6 +411,29 @@ export function ArchitectureDiagram() {
   const advanceStage = useCallback(() => {
     setSelectedStage((s) => Math.min(s + 1, PIPELINE_STAGES.length - 1));
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'workflow') {
+      return;
+    }
+    const step = WORKFLOW_STEPS[selectedWorkflowStep];
+    if (!step) {
+      return;
+    }
+    document.getElementById(step.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [tab, selectedWorkflowStep]);
+
+  useEffect(() => {
+    if (tab !== 'pipeline') {
+      return;
+    }
+    const stage = PIPELINE_STAGES[selectedStage];
+    if (!stage) {
+      return;
+    }
+    setExpandedStage(stage.id);
+    document.getElementById(`pipeline-stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [tab, selectedStage]);
 
   const evalType = EVAL_TYPE_ENTRIES.find((e) => e.id === evalTypeId) ?? EVAL_TYPE_ENTRIES[0]!;
 
@@ -423,11 +455,11 @@ export function ArchitectureDiagram() {
               disabled={selectedWorkflowStep >= WORKFLOW_STEPS.length - 1}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
             >
-              Next step
+              Next step ({selectedWorkflowStep + 1}/{WORKFLOW_STEPS.length})
             </button>
             <button
               type="button"
-              onClick={() => setSelectedWorkflowStep(0)}
+              onClick={() => selectWorkflowStep(0)}
               className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
             >
               Reset
@@ -442,11 +474,11 @@ export function ArchitectureDiagram() {
               disabled={selectedStage >= PIPELINE_STAGES.length - 1}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
             >
-              Next step
+              Next step ({selectedStage + 1}/{PIPELINE_STAGES.length})
             </button>
             <button
               type="button"
-              onClick={() => setSelectedStage(0)}
+              onClick={() => selectPipelineStage(0)}
               className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
             >
               Reset
@@ -546,7 +578,7 @@ export function ArchitectureDiagram() {
                     ) : null}
                     <button
                       type="button"
-                      onClick={() => setSelectedWorkflowStep(i)}
+                      onClick={() => selectWorkflowStep(i)}
                       className="rounded-xl border-2 px-2.5 py-2 text-center transition-all"
                       style={{
                         borderColor: isSelected ? step.color : isPast ? `${step.color}99` : 'var(--border)',
@@ -594,7 +626,7 @@ export function ArchitectureDiagram() {
               <button
                 key={step.id}
                 type="button"
-                onClick={() => setSelectedWorkflowStep(i)}
+                onClick={() => selectWorkflowStep(i)}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors',
                   i === selectedWorkflowStep ? 'border-primary/40 bg-primary/5' : 'border-border hover:border-primary/25',
@@ -632,7 +664,7 @@ export function ArchitectureDiagram() {
                     ) : null}
                     <button
                       type="button"
-                      onClick={() => setSelectedStage(i)}
+                      onClick={() => selectPipelineStage(i)}
                       className="rounded-xl border-2 px-3 py-2 text-center transition-all"
                       style={{
                         borderColor: isSelected ? stage.color : isPast ? `${stage.color}99` : 'var(--border)',
@@ -658,7 +690,8 @@ export function ArchitectureDiagram() {
 
           {PIPELINE_STAGES[selectedStage] ? (
             <div
-              className="rounded-xl border-2 p-4"
+              id={`pipeline-stage-${PIPELINE_STAGES[selectedStage]!.id}`}
+              className="scroll-mt-24 rounded-xl border-2 p-4"
               style={{
                 borderColor: PIPELINE_STAGES[selectedStage]!.color,
                 background: `rgba(${rgb(PIPELINE_STAGES[selectedStage]!.color)},0.08)`,

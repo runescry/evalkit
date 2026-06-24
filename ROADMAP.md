@@ -33,9 +33,26 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 - [x] **13** Observability (`infra/observability`)
 - [ ] **14** Auth + rate limits (`feature/auth`) — **deferred / backlog**
 - [x] **15** Release v1 (`release/v1`)
+- [x] **16** Post-v1 interview polish (`feature/post-v1-interview`)
+- [x] **17** Observability + LLM trace (`infra/observability-trace`)
 
 ## Future / backlog
 
 - [ ] **14** Auth + rate limits — API keys, middleware rate limiting (deferred from v1; see ADR-008)
+- [ ] **Persona matrix Phase 2** — full 36-agent aidea catalog, nightly CI (`docs/PERSONA-MATRIX-PHASE2.md`)
+- [ ] **L3 persona eval gate** — `npm run test:eval:persona` for P0 agents
+- [ ] **pgvector / run history** — semantic dedup across runs (ADR-004 revisit)
 
-- [ ] **Dual-tier eval comparison** — extend L3 eval to run scorer against both `fast` and `strong` tiers via `lib/ai.ts`, report alignment deltas and cost/latency side-by-side; gate on minimum alignment per tier plus max regression between tiers.
+## Shipped in Slice 16 (summary)
+
+- Agent-matrix + harness-json sandbox + aidea pilot fixture
+- Adversarial generation + dual-tier scoring + tier comparison UI
+- `/architecture` reference page (workflow, backend map, ADRs)
+- Run report: progress, activity stream, flagged findings, **LLM prompts panel**
+- Fluid Compute enabled in `vercel.json`
+
+## Shipped in Slice 17 (summary)
+
+- Cost metrics race fix (dual score), KV merge retries, Gateway cost backfill
+- **LLM trace** panel — prompts + model responses per pipeline step
+- Cost summary visible during active runs with metrics polling

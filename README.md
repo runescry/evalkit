@@ -2,21 +2,25 @@
 
 AI eval harness for deployed chatbots. Paste a URL + description → targeted test suite → sandbox execution → rubric scoring → streaming report → human-approved prompt fixes.
 
-**Version 1.0.0** — production-ready eval pipeline with workflow durability, Slack `/eval`, observability, and sandbox fallback.
+**Version 1.0.0** (base release) + post-v1 enhancements: agent-matrix persona eval, dual scoring, architecture reference UI, and LLM prompt inspection on reports.
 
 ## Architecture
 
 ```
-URL + description
+URL + description (or demo preset)
   → POST /api/runs
   → Workflow (generate → sandbox × N → score → report → approval → fixes)
   → Vercel KV (run state)
   → SSE stream + /runs/[id] report UI
 ```
 
-- **Models:** two-tier routing via Vercel AI Gateway (`fast` for test generation, `strong` for scoring/reports/fixes) — see [`lib/ai.ts`](./lib/ai.ts)
-- **Isolation:** one Vercel Sandbox per test case (max 5 concurrent); falls back to direct HTTP with `unverified: true` when sandbox infra fails
-- **Durability:** Vercel Workflow SDK checkpoints each step; human approval gate before prompt fixes
+- **Models:** two-tier routing via Vercel AI Gateway — `fast` for standard case generation, `strong` for adversarial generation, scoring, reports, fixes — see [`lib/ai.ts`](./lib/ai.ts)
+- **Eval modes:** single URL (`message-json`) or **agent-matrix** (`harness-json`) with per-agent contracts — see [ADR-010](./docs/DECISIONS.md)
+- **Isolation:** one Vercel Sandbox per test case; fan-out 5 (fast-chat) or 2 (long harness); falls back to direct HTTP with `unverified: true` when sandbox infra fails
+- **Durability:** Vercel Workflow SDK + Fluid Compute; human approval gate before prompt fixes
+- **Observability:** per-run cost/latency on report; OpenTelemetry spans with `evalkit.run_id`
+
+**Reference UI:** [`/architecture`](./app/architecture/page.tsx) — workflow steps, backend map, ADRs, Vercel tradeoffs (interview / onboarding).
 
 Full detail: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · trade-offs: [docs/DECISIONS.md](./docs/DECISIONS.md)
 
@@ -32,9 +36,19 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), enter a chatbot URL and description, and start an eval run.
+Open [http://localhost:3000](http://localhost:3000). Use **Run agent-matrix pilot** or **Run aidea fast-chat** presets, or enter a custom URL + description.
 
 **Minimum local env:** `AI_GATEWAY_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`. See [docs/ENV.md](./docs/ENV.md) for the full variable reference.
+
+## Report page
+
+`/runs/[id]` shows:
+
+- Streaming markdown report, pipeline progress, live activity
+- Flagged findings (including harness `toolCalls` and validation notes)
+- Dual-tier score comparison when `scoringMode: dual`
+- **LLM trace** — system/user/assistant per Gateway call (stored on run or reconstructed from snapshot)
+- Cost summary, approval card, suggested fixes
 
 ## Quality gates
 
@@ -52,13 +66,14 @@ npm run test:eval   # L3 scorer alignment gate only
 
 1. Connect the repo in [Vercel](https://vercel.com) → Settings → Git
 2. Set **production** environment variables (checklist below)
-3. Merge to `main` — Vercel deploys production automatically; PRs get preview deploys
+3. **Merge to `main`** — Vercel Git integration deploys production after GitHub checks pass
 
 ```bash
 npx vercel link
-npx vercel deploy          # preview
-npx vercel deploy --prod   # production (or merge to main)
+npx vercel deploy          # preview only
 ```
+
+**Production:** prefer `git push` to `main`. If the project has **Deployment Checks** wired to GitHub Actions, `vercel deploy --prod` from a laptop has no commit SHA — checks can hang indefinitely. See [docs/CICD.md](./docs/CICD.md).
 
 Verify after deploy:
 
@@ -93,4 +108,7 @@ Start with [AGENTS.md](./AGENTS.md).
 - [Contributing](./docs/CONTRIBUTING.md)
 - [Environment variables](./docs/ENV.md)
 - [CI/CD](./docs/CICD.md)
+- [Prompts](./docs/PROMPTS.md)
+- [Runbook](./docs/RUNBOOK.md)
 - [Roadmap](./ROADMAP.md)
+- [aidea persona eval handoff](./docs/AIDEA-PERSONA-EVAL-HANDOFF.md)

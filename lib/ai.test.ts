@@ -145,6 +145,7 @@ describe('lib/ai', () => {
       usage: { inputTokens: 1, outputTokens: 1 },
       providerMetadata: { gateway: { generationId: 'gen-2' } },
     });
+    getGenerationInfoMock.mockResolvedValue({ totalCost: 0.0001 });
 
     const health = await pingTier('fast');
     expect(health.ok).toBe(true);

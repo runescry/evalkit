@@ -10,3 +10,5 @@ alwaysApply: false
 - SSE report streaming: skeleton placeholders to avoid layout shift
 - Do not import `lib/store`, `@vercel/kv`, or server-only modules in client components
 - Public report pages at `/runs/[id]` read from API/KV via server components or fetch
+- LLM prompts on report page use `lib/run-prompts.ts` (reconstruction) — do not fetch raw Gateway logs
+- Architecture reference at `/architecture` — data from `lib/architecture-graph.ts`, client component `architecture-diagram.tsx`

@@ -26,7 +26,7 @@ Export from aidea `AGENT_LIBRARY` → [`fixtures/aidea-agent-catalog.json`](../f
 
 | Tier | Agents | Cases/agent | When |
 |------|--------|-------------|------|
-| P0 | 3 pilot (`inbox-triage`, `finance-director`, `mental-health-director`) | 4 | Phase 1 demo |
+| P0 | 3 pilot (`inbox-triage`, `finance-director`, `mental-health-director`) | 4 (12 in pilot fixture) | Phase 1 demo — **shipped** |
 | P1 | 9 daily + dispatch | 3 | High user-visible risk |
 | P2 | 9 personal + 9 company directors | 2 | Domain guardrails |
 | P3 | 8 learning + creator | 2 | Studio-only agents |

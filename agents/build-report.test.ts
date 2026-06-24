@@ -20,8 +20,16 @@ const observabilityMocks = vi.hoisted(() => ({
   recordAiCallWithSpan: vi.fn(),
 }));
 
+const traceMocks = vi.hoisted(() => ({
+  recordLlmTrace: vi.fn(),
+}));
+
 vi.mock('@/lib/observability', () => ({
   recordAiCallWithSpan: observabilityMocks.recordAiCallWithSpan,
+}));
+
+vi.mock('@/lib/llm-trace', () => ({
+  recordLlmTrace: traceMocks.recordLlmTrace,
 }));
 
 const params = {
@@ -70,6 +78,7 @@ describe('buildReport', () => {
     vi.clearAllMocks();
     storeMocks.updateRun.mockResolvedValue({});
     observabilityMocks.recordAiCallWithSpan.mockResolvedValue(undefined);
+    traceMocks.recordLlmTrace.mockResolvedValue(undefined);
     delete globalThis.__EVALKIT_BUILD_REPORT__;
   });
 

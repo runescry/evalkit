@@ -1,10 +1,38 @@
 import { createHash } from 'node:crypto';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { EvalkitCallMeta } from '@/lib/ai';
+import { lookupGatewayGenerationCost } from '@/lib/ai';
 import type { RunMetrics } from '@/lib/types';
 import { getRun, updateRun } from '@/workflows/store-bridge';
 
 const TRACER_NAME = 'evalkit';
+const METRICS_MERGE_RETRIES = 6;
+
+function appendGenerationId(
+  ids: string[] | undefined,
+  generationId: string | null,
+  costRecorded: boolean,
+): string[] | undefined {
+  if (!generationId) {
+    return ids;
+  }
+  if (costRecorded) {
+    if (!ids?.includes(generationId)) {
+      return ids;
+    }
+    const next = ids.filter((id) => id !== generationId);
+    return next.length > 0 ? next : undefined;
+  }
+  const next = ids ? [...ids] : [];
+  if (!next.includes(generationId)) {
+    next.push(generationId);
+  }
+  return next;
+}
+
+function stepCallCount(metrics: RunMetrics | undefined, stepName: string): number {
+  return metrics?.steps.find((step) => step.step === stepName)?.callCount ?? 0;
+}
 
 export function urlDomainOnly(url: string): string {
   try {
@@ -43,6 +71,7 @@ export function mergeAiCallIntoMetrics(
   const inputTokens = meta.inputTokens ?? 0;
   const outputTokens = meta.outputTokens ?? 0;
   const totalCost = meta.totalCost ?? 0;
+  const costRecorded = meta.totalCost != null;
 
   if (existingIndex >= 0) {
     const existing = steps[existingIndex]!;
@@ -53,6 +82,7 @@ export function mergeAiCallIntoMetrics(
       outputTokens: existing.outputTokens + outputTokens,
       totalCost: existing.totalCost + totalCost,
       callCount: existing.callCount + 1,
+      generationIds: appendGenerationId(existing.generationIds, meta.generationId, costRecorded),
     };
   } else {
     steps.push({
@@ -62,6 +92,7 @@ export function mergeAiCallIntoMetrics(
       outputTokens,
       totalCost,
       callCount: 1,
+      generationIds: appendGenerationId(undefined, meta.generationId, costRecorded),
     });
   }
 
@@ -155,12 +186,70 @@ function aiSpanAttributes(runId: string, meta: EvalkitCallMeta): Record<string, 
 }
 
 export async function recordAiCallMetrics(runId: string, meta: EvalkitCallMeta): Promise<void> {
+  for (let attempt = 0; attempt < METRICS_MERGE_RETRIES; attempt += 1) {
+    const run = await getRun(runId);
+    if (!run) {
+      return;
+    }
+
+    const beforeCount = stepCallCount(run.metrics, meta.evalkitStep);
+    const metrics = mergeAiCallIntoMetrics(run.metrics, meta);
+    await updateRun(runId, { metrics });
+
+    const verify = await getRun(runId);
+    if (stepCallCount(verify?.metrics, meta.evalkitStep) >= beforeCount + 1) {
+      return;
+    }
+
+    if (attempt < METRICS_MERGE_RETRIES - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+    }
+  }
+}
+
+/** Backfill Gateway costs when responses omitted totalCost (stream + dual score). */
+export async function backfillRunMetricsCosts(runId: string): Promise<void> {
   const run = await getRun(runId);
-  if (!run) {
+  if (!run?.metrics?.steps.length) {
     return;
   }
 
-  const metrics = mergeAiCallIntoMetrics(run.metrics, meta);
+  const steps = [...run.metrics.steps];
+  let changed = false;
+
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index]!;
+    const pendingIds = step.generationIds ?? [];
+    if (pendingIds.length === 0) {
+      continue;
+    }
+
+    let addedCost = 0;
+    const unresolved: string[] = [];
+    for (const generationId of pendingIds) {
+      const cost = await lookupGatewayGenerationCost(generationId);
+      if (cost != null) {
+        addedCost += cost;
+      } else {
+        unresolved.push(generationId);
+      }
+    }
+
+    if (addedCost > 0) {
+      steps[index] = {
+        ...step,
+        totalCost: step.totalCost + addedCost,
+        generationIds: unresolved.length > 0 ? unresolved : undefined,
+      };
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  const metrics = summarizeRunMetrics(steps, run.metrics.aiCallCount, Date.now());
   await updateRun(runId, { metrics });
 }
 

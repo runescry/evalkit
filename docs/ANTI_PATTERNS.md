@@ -9,10 +9,12 @@ Do not do these. Agents: check before opening a PR.
 | Hardcode model IDs in `agents/` | `lib/ai.ts` with `tier` param |
 | Raw `@vercel/kv.set` in routes | `lib/store.ts` with Zod validation |
 | Import `lib/store` in client components | Server component or API fetch |
-| Inline SSE parsing in components | Shared SSE helper (Slice 07) |
+| Inline SSE parsing in components | `lib/sse.ts` (`subscribeRunStream`) |
 | Duplicate Zod schemas | Single source in `lib/types.ts` |
 | `generateObject` without schema | `generateText` + `Output.object` |
 | Large prompts in agent files | `lib/prompts.ts` |
+| Store full prompts in KV | Reconstruct via `lib/run-prompts.ts` on report page |
+| `vercel deploy --prod` with GitHub Deployment Checks | `git push` to `main` for production |
 
 ## Testing
 
@@ -37,3 +39,4 @@ Do not do these. Agents: check before opening a PR.
 | Multiple slices in one PR | One slice per branch |
 | Skip CHANGELOG on merge | Update `[Unreleased]` |
 | Push without running gates | `npm run gates` first |
+| Deploy production via CLI when Deployment Checks enabled | `git push` to `main` |

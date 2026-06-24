@@ -98,11 +98,11 @@ function extractCallMeta(
   };
 }
 
-const GENERATION_INFO_RETRIES = 3;
-const GENERATION_INFO_DELAY_MS = 250;
+const GENERATION_INFO_RETRIES = 8;
+const GENERATION_INFO_DELAY_MS = 400;
 
 /** Gateway often omits totalCost on the response; look it up by generationId. */
-async function lookupGenerationCost(generationId: string): Promise<number | null> {
+export async function lookupGatewayGenerationCost(generationId: string): Promise<number | null> {
   for (let attempt = 0; attempt < GENERATION_INFO_RETRIES; attempt += 1) {
     try {
       const info = await gateway.getGenerationInfo({ id: generationId });
@@ -131,7 +131,7 @@ async function resolveCallMeta(
     return meta;
   }
 
-  const totalCost = await lookupGenerationCost(meta.generationId);
+  const totalCost = await lookupGatewayGenerationCost(meta.generationId);
   if (totalCost == null) {
     return meta;
   }

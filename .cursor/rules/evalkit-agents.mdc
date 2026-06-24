@@ -8,7 +8,10 @@ alwaysApply: false
 
 - All LLM calls go through `lib/ai.ts` with `tier: 'fast' | 'strong'` and `evalkit.step` metadata
 - Use AI SDK v6: `generateText` + `Output.object({ schema })` for structured output
-- Store prompt version hash from `lib/prompts.ts` on the run record
+- Store prompt version hash from `lib/prompts.ts` on the run record (`promptVersions`)
+- Report UI reconstructs full prompts via `lib/run-prompts.ts` — do not persist prompts in KV
+- `generationMode: adversarial` uses strong tier for generate; `scoringMode: dual` scores fast+strong per case
+- Harness sandbox uses `lib/agent-matrix.ts` + `lib/sandbox-response.ts` for `harness-json` contracts
 - Workflow steps use `"use step"`; orchestrator uses `"use workflow"` in `workflows/eval-run.ts`
 - Each step calls `updateRun(runId, patch)` for progress visibility
 - Unit tests mock via `lib/test/mock-ai.ts` — assert Zod shape and category distribution, not exact text

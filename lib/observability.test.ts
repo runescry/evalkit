@@ -74,6 +74,32 @@ describe('lib/observability', () => {
     expect(metrics.totalLatencyMs).toBe(1500);
   });
 
+  it('mergeAiCallIntoMetrics tracks generationIds when Gateway cost is pending', () => {
+    const pending: EvalkitCallMeta = {
+      evalkitTier: 'fast',
+      evalkitStep: 'generate-test-cases',
+      latencyMs: 100,
+      modelId: 'anthropic/claude-haiku-4-5',
+      inputTokens: 50,
+      outputTokens: 25,
+      totalCost: null,
+      generationId: 'gen-pending',
+    };
+
+    const merged = mergeAiCallIntoMetrics(undefined, pending);
+    expect(merged.steps[0]?.generationIds).toEqual(['gen-pending']);
+    expect(merged.totalCost).toBe(0);
+
+    const resolved: EvalkitCallMeta = {
+      ...pending,
+      totalCost: 0.002,
+      generationId: 'gen-pending',
+    };
+    const withCost = mergeAiCallIntoMetrics(merged, resolved);
+    expect(withCost.steps[0]?.generationIds).toBeUndefined();
+    expect(withCost.totalCost).toBe(0.002);
+  });
+
   it('formatCostUsd renders four decimal places', () => {
     expect(formatCostUsd(0.0042)).toBe('$0.0042');
   });

@@ -30,6 +30,8 @@ Read in sequence **before** writing code:
 | [docs/PROMPTS.md](./docs/PROMPTS.md) | Prompt versioning and hashes |
 | [docs/RUNBOOK.md](./docs/RUNBOOK.md) | Debug failed runs, KV, workflow |
 | [docs/CICD.md](./docs/CICD.md) | Local → Git → Vercel pipeline |
+| [docs/AIDEA-PERSONA-EVAL-HANDOFF.md](./docs/AIDEA-PERSONA-EVAL-HANDOFF.md) | aidea harness eval adapter |
+| [docs/PERSONA-MATRIX-PHASE2.md](./docs/PERSONA-MATRIX-PHASE2.md) | Full 36-agent rollout plan |
 | [docs/ANTI_PATTERNS.md](./docs/ANTI_PATTERNS.md) | Forbidden patterns |
 | [CHANGELOG.md](./CHANGELOG.md) | What shipped per slice |
 | [SECURITY.md](./SECURITY.md) | Secrets and PII |
@@ -64,15 +66,19 @@ Read in sequence **before** writing code:
 | `createRun`, `updateRun`, `getRun`, `listRuns` | `lib/store.ts` | All KV persistence — Zod-validated |
 | Types + Zod schemas | `lib/types.ts` | `EvalRun`, `TestCase`, `TestResult`, etc. |
 | Prompt templates + hash | `lib/prompts.ts` | Versioned prompts; store hash on run |
+| Reconstruct run prompts | `lib/run-prompts.ts` | Report UI — system/user per LLM step |
+| Agent-matrix / harness | `lib/agent-matrix.ts` | `evalMode`, KB merge, sandbox body |
+| Demo presets | `lib/demo-presets.ts` | One-click pilot runs from landing form |
+| Architecture graph data | `lib/architecture-graph.ts` | `/architecture` page content |
 | `mockGenerateText`, `mockStreamText` | `lib/test/mock-ai.ts` | Unit/contract tests — never live Gateway in CI |
 
 ### Agent modules (pipeline)
 
 | Step | Module | Model tier |
 |------|--------|------------|
-| Generate test cases | `agents/generate-cases.ts` | fast |
-| Run sandbox | `agents/run-sandbox.ts` | n/a (calls target app) |
-| Score results | `agents/score-results.ts` | strong |
+| Generate test cases | `agents/generate-cases.ts` | fast (standard) or strong (adversarial) |
+| Run sandbox | `agents/run-sandbox.ts` | n/a (calls target app; `message-json` or `harness-json`) |
+| Score results | `agents/score-results.ts` | strong (or dual fast+strong) |
 | Build report | `agents/build-report.ts` | strong (stream) |
 | Suggest fixes | `agents/suggest-fixes.ts` | strong |
 | Orchestration | `workflows/eval-run.ts` | Workflow SDK steps |

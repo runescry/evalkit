@@ -1,6 +1,7 @@
 import { Output } from 'ai';
 import { z } from 'zod';
 import { generateWithTier } from '@/lib/ai';
+import { recordLlmTrace } from '@/lib/llm-trace';
 import {
   GENERATE_CASES_ADVERSARIAL_PROMPT,
   GENERATE_CASES_PROMPT,
@@ -154,6 +155,16 @@ async function generateTestCasesWithAi(
   assertUniqueInputs(testCases);
   assertCategoryCoverage(testCases, input.caseCount);
   assertAgentCoverage(testCases, input);
+
+  await recordLlmTrace(runId, {
+    step: adversarial ? 'generate-test-cases-adversarial' : 'generate-test-cases',
+    tier: adversarial ? 'strong' : 'fast',
+    system: promptTemplate.system,
+    user: userPrompt,
+    assistant: JSON.stringify(parsed, null, 2),
+    assistantFormat: 'json',
+    evalkit: result.evalkit,
+  });
 
   return { testCases, promptVersion };
 }

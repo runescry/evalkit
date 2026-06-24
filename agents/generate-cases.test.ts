@@ -14,8 +14,16 @@ const { generateWithTierMock } = vi.hoisted(() => ({
   generateWithTierMock: vi.fn(),
 }));
 
+const traceMocks = vi.hoisted(() => ({
+  recordLlmTrace: vi.fn(),
+}));
+
 vi.mock('@/lib/ai', () => ({
   generateWithTier: generateWithTierMock,
+}));
+
+vi.mock('@/lib/llm-trace', () => ({
+  recordLlmTrace: traceMocks.recordLlmTrace,
 }));
 
 function fintechInput(overrides: Record<string, unknown> = {}) {
@@ -36,6 +44,8 @@ function buildFintechCases(count: number) {
 describe('generateTestCases', () => {
   beforeEach(() => {
     generateWithTierMock.mockReset();
+    traceMocks.recordLlmTrace.mockReset();
+    traceMocks.recordLlmTrace.mockResolvedValue(undefined);
   });
 
   it('calls fast tier with structured output and stores prompt version metadata', async () => {
