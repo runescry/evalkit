@@ -37,13 +37,10 @@ describe('POST /api/runs/[id]/approve', () => {
     vi.clearAllMocks();
     resumeHookMock.mockResolvedValue(undefined);
     storeMocks.getRun.mockReset();
-    storeMocks.getRun
-      .mockResolvedValueOnce(awaitingRun)
-      .mockResolvedValueOnce(awaitingRun)
-      .mockResolvedValueOnce({ ...awaitingRun, status: 'complete', approvedAt: 99, suggestedFixes: [] });
+    storeMocks.getRun.mockResolvedValue(awaitingRun);
   });
 
-  it('resumes approval hook and returns updated run', async () => {
+  it('resumes approval hook and returns 202 for client polling', async () => {
     const request = new Request('http://localhost/api/runs/run_approve1/approve', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -53,9 +50,9 @@ describe('POST /api/runs/[id]/approve', () => {
     const response = await POST(request, { params: Promise.resolve({ id: 'run_approve1' }) });
     const body = await response.json();
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(resumeHookMock).toHaveBeenCalledWith('approval:run_approve1', { approved: true });
-    expect(body.status).toBe('complete');
+    expect(body).toEqual({ runId: 'run_approve1', resumed: true, approved: true });
   });
 
   it('returns 409 when run is not awaiting approval', async () => {

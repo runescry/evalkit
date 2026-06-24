@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeRunStream } from '@/lib/sse';
-import { APPROVAL_POLL_MS } from '@/lib/run-pipeline';
 import { cn } from '@/lib/utils';
 import type { EvalRun, RunMetrics } from '@/lib/types';
 
@@ -182,23 +181,6 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
     setMetrics(updated.metrics);
     setMarkdown(updated.report?.markdown ?? markdown);
     setSummary(updated.report?.summary);
-
-    if (updated.status === 'awaiting_approval') {
-      const deadline = Date.now() + 110_000;
-      while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_MS));
-        try {
-          const fresh = await fetchRun(run.id);
-          setRun(fresh);
-          setMetrics(fresh.metrics);
-          if (fresh.status !== 'awaiting_approval') {
-            break;
-          }
-        } catch {
-          break;
-        }
-      }
-    }
 
     try {
       const nextMetrics = await fetchRunMetrics(run.id);

@@ -1,9 +1,7 @@
 import { resumeHook } from 'workflow/api';
 import { getRun } from '@/lib/store';
-import { waitForRunAfterApproval } from '@/lib/run-pipeline';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -55,10 +53,9 @@ export async function POST(request: Request, context: RouteContext) {
 
   await resumeHook(`approval:${id}`, { approved: parsed.approved });
 
-  const updated = await waitForRunAfterApproval(() => getRun(id));
-  if (!updated) {
-    return Response.json({ error: 'Run not found', runId: id }, { status: 404 });
-  }
-
-  return Response.json(updated);
+  // Workflow continues asynchronously — client polls GET /api/runs/:id.
+  return Response.json(
+    { runId: id, resumed: true, approved: parsed.approved },
+    { status: 202 },
+  );
 }

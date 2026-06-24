@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseApprovalResponse, pollRunAfterApproval } from '@/lib/poll-run-after-approval';
 import type { EvalRun } from '@/lib/types';
 
 type ApprovalCardProps = {
@@ -35,12 +36,15 @@ export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: Ap
         body: JSON.stringify({ approved }),
       });
 
-      if (!response.ok) {
-        const body = (await response.json()) as { error?: string };
-        throw new Error(body.error ?? 'Approval request failed');
+      const parsed = await parseApprovalResponse(response);
+      if (parsed.error) {
+        throw new Error(parsed.error);
       }
 
-      const resolvedRun = (await response.json()) as EvalRun;
+      const resolvedRun = parsed.resumed
+        ? await pollRunAfterApproval(runId)
+        : parsed.run ?? (await pollRunAfterApproval(runId));
+
       onResolved?.(resolvedRun);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Approval request failed');
@@ -61,6 +65,7 @@ export function ApprovalCard({ runId, status, flaggedCount = 0, onResolved }: Ap
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">Please keep this tab open…</p>
+          {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
         </CardContent>
       </Card>
     );
