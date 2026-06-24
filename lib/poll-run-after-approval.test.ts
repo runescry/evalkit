@@ -38,6 +38,15 @@ describe('poll-run-after-approval', () => {
     expect(parsed).toEqual({ resumed: true });
   });
 
+  it('parseApprovalResponse handles completed run payload', async () => {
+    const response = new Response(JSON.stringify({ id: 'run_poll', status: 'complete' }), {
+      status: 200,
+    });
+    const parsed = await parseApprovalResponse(response);
+    expect(parsed.run?.status).toBe('complete');
+    expect(parsed.resumed).toBe(false);
+  });
+
   it('parseApprovalResponse surfaces API errors without throwing on empty body', async () => {
     const response = new Response('', { status: 504 });
     const parsed = await parseApprovalResponse(response);

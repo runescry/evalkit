@@ -58,9 +58,13 @@ export async function parseApprovalResponse(response: Response): Promise<{
     return { resumed: false, error };
   }
 
-  if (body && typeof body === 'object' && 'resumed' in body) {
+  if (response.status === 202 && body && typeof body === 'object' && 'resumed' in body) {
     return { resumed: Boolean((body as { resumed: unknown }).resumed) };
   }
 
-  return { resumed: false, run: body as EvalRun };
+  if (body && typeof body === 'object' && 'status' in body) {
+    return { resumed: false, run: body as EvalRun };
+  }
+
+  return { resumed: false, error: 'Unexpected approval response' };
 }
