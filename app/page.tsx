@@ -1,13 +1,9 @@
 import { EvalStartForm } from '@/components/eval-start-form';
 import { PageHeader } from '@/components/page-header';
-import { RecentRuns } from '@/components/recent-runs';
-import { listRuns } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const runs = await listRuns(8);
-
   return (
     <>
       <PageHeader
@@ -15,10 +11,7 @@ export default async function Home() {
         description="Paste a chatbot URL and description — EvalKit generates adversarial cases, runs them in sandbox isolation, scores against a rubric, and streams a report."
       />
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
-          <EvalStartForm />
-          <RecentRuns runs={runs} />
-        </div>
+        <EvalStartForm />
       </div>
     </>
   );
