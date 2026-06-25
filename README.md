@@ -2,7 +2,7 @@
 
 AI eval harness for deployed chatbots. Paste a URL + description → targeted test suite → sandbox execution → rubric scoring → streaming report → human-approved prompt fixes.
 
-**Version 1.0.0** (base release) + post-v1 enhancements: agent-matrix persona eval, dual scoring, architecture reference UI, and LLM prompt inspection on reports.
+**Version 1.0.0** (base release) + post-v1 enhancements: agent-matrix persona eval, dual + multi-vendor scoring, architecture reference UI, and LLM trace on reports.
 
 ## Architecture
 
@@ -14,13 +14,13 @@ URL + description (or demo preset)
   → SSE stream + /runs/[id] report UI
 ```
 
-- **Models:** two-tier routing via Vercel AI Gateway — `fast` for standard case generation, `strong` for adversarial generation, scoring, reports, fixes — see [`lib/ai.ts`](./lib/ai.ts)
+- **Models:** three-tier routing via Vercel AI Gateway — `fast` for standard generation, `strong` for adversarial generation / primary scoring / reports / fixes, `openai` for optional multi-vendor judge (BYOK) — see [`lib/ai.ts`](./lib/ai.ts)
 - **Eval modes:** single URL (`message-json`) or **agent-matrix** (`harness-json`) with per-agent contracts — see [ADR-010](./docs/DECISIONS.md)
 - **Isolation:** one Vercel Sandbox per test case; fan-out 5 (fast-chat) or 2 (long harness); falls back to direct HTTP with `unverified: true` when sandbox infra fails
 - **Durability:** Vercel Workflow SDK + Fluid Compute; human approval gate before prompt fixes
 - **Observability:** per-run cost/latency on report; OpenTelemetry spans with `evalkit.run_id`
 
-**Reference UI:** [`/architecture`](./app/architecture/page.tsx) — workflow steps, backend map, ADRs, Vercel tradeoffs (interview / onboarding).
+**Reference UI:** [`/architecture`](/architecture) — high-level system overview, workflow steps, backend map, ADRs, Vercel tradeoffs (interview / onboarding).
 
 Full detail: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · trade-offs: [docs/DECISIONS.md](./docs/DECISIONS.md)
 
@@ -36,7 +36,7 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Use **Run agent-matrix pilot** or **Run aidea fast-chat** presets, or enter a custom URL + description.
+Open [http://localhost:3000](http://localhost:3000). Use **Run agent-matrix pilot** or **Prefill aidea fast-chat** presets, or enter a custom URL + description. Pick **Scoring mode** on the form: Dual, Multi-vendor (Sonnet + OpenAI), or Strong only.
 
 **Minimum local env:** `AI_GATEWAY_API_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`. See [docs/ENV.md](./docs/ENV.md) for the full variable reference.
 
@@ -46,7 +46,7 @@ Open [http://localhost:3000](http://localhost:3000). Use **Run agent-matrix pilo
 
 - Streaming markdown report, pipeline progress, live activity
 - Flagged findings (including harness `toolCalls` and validation notes)
-- Dual-tier score comparison when `scoringMode: dual`
+- Dual-tier or multi-vendor score comparison (`scoringMode: dual` or `multi-vendor`)
 - **LLM trace** — system/user/assistant per Gateway call (stored on run or reconstructed from snapshot)
 - Cost summary, approval card, suggested fixes
 
@@ -78,7 +78,8 @@ npx vercel deploy          # preview only
 Verify after deploy:
 
 ```bash
-curl -s https://<your-domain>/api/health | jq
+curl -s https://<your-domain>/api/health | jq '.tiers[].tier'
+# expect: "fast", "strong", "openai"
 ```
 
 See [docs/CICD.md](./docs/CICD.md) for CI/CD pipeline and production env checklist.

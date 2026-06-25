@@ -62,7 +62,7 @@ Read in sequence **before** writing code:
 
 | Helper | Path | Use when |
 |--------|------|----------|
-| `generateWithTier` | `lib/ai.ts` | Any LLM call — pass `tier: 'fast' \| 'strong'` and `step` |
+| `generateWithTier` | `lib/ai.ts` | Any LLM call — pass `tier: 'fast' \| 'strong' \| 'openai'` and `step` |
 | `createRun`, `updateRun`, `getRun`, `listRuns` | `lib/store.ts` | All KV persistence — Zod-validated |
 | Types + Zod schemas | `lib/types.ts` | `EvalRun`, `TestCase`, `TestResult`, etc. |
 | Prompt templates + hash | `lib/prompts.ts` | Versioned prompts; store hash on run |
@@ -78,7 +78,7 @@ Read in sequence **before** writing code:
 |------|--------|------------|
 | Generate test cases | `agents/generate-cases.ts` | fast (standard) or strong (adversarial) |
 | Run sandbox | `agents/run-sandbox.ts` | n/a (calls target app; `message-json` or `harness-json`) |
-| Score results | `agents/score-results.ts` | strong (or dual fast+strong) |
+| Score results | `agents/score-results.ts` | strong (or dual fast+strong, or multi-vendor strong+openai) |
 | Build report | `agents/build-report.ts` | strong (stream) |
 | Suggest fixes | `agents/suggest-fixes.ts` | strong |
 | Orchestration | `workflows/eval-run.ts` | Workflow SDK steps |

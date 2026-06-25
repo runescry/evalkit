@@ -1,4 +1,5 @@
 export type ArchitectureTab =
+  | 'overview'
   | 'workflow'
   | 'pipeline'
   | 'backend-map'
@@ -108,11 +109,11 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     icon: '📋',
     color: '#78716c',
     v1Approach:
-      'User pastes target POST endpoint and behavioral description, or starts the agent-matrix pilot preset. Shared toggles: case count, standard/adversarial generation, dual/strong scoring.',
+      'User pastes target POST endpoint and behavioral description, or starts the agent-matrix pilot preset. Shared toggles: case count, standard/adversarial generation, scoring mode (dual / multi-vendor / strong-only).',
     productionApproach:
       'Saved eval profiles, API keys, team templates, regression baselines per product surface.',
     antiPattern: 'Vague descriptions that cause the generator to probe out-of-scope features (422 storms).',
-    adrIds: ['ADR-009', 'ADR-010'],
+    adrIds: ['ADR-009', 'ADR-010', 'ADR-011'],
     infra: ['EvalStartForm', 'demo-presets.ts', 'Zod validation', 'KV input snapshot'],
   },
   {
@@ -147,13 +148,13 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     label: 'Rubric score',
     icon: '⚖️',
     color: '#b45309',
-    tier: 'strong primary · dual optional',
+    tier: 'strong primary · dual or multi-vendor optional',
     v1Approach:
-      'Four dimensions × 1–5 (total /20, flag < 14). Dual mode scores fast + strong in parallel and stores tier disagreement.',
+      'Four dimensions × 1–5 (total /20, flag < 14). Dual: Haiku + Sonnet in parallel. Multi-vendor: Sonnet + OpenAI (BYOK) in parallel. Primary flags always from Sonnet.',
     productionApproach:
       'Custom rubrics per customer, human calibration loops, L3 regression gate in CI.',
     antiPattern: 'Trusting a single cheap judge for high-stakes compliance without strong-tier confirmation.',
-    adrIds: ['ADR-003', 'ADR-009'],
+    adrIds: ['ADR-003', 'ADR-009', 'ADR-011'],
     infra: ['agents/score-results.ts', 'multiModelScore', 'evals/ground-truth.json'],
   },
   {
@@ -224,7 +225,7 @@ export const VERCEL_TRADEOFFS: VercelTradeoffEntry[] = [
   {
     component: 'Fluid Compute',
     whyVercel:
-      'Bursty pipeline: idle during 90s harness calls, spike during sandbox fan-out and dual scoring — pay for active compute between steps.',
+      'Bursty pipeline: idle during 90s harness calls, spike during sandbox fan-out and multi-judge scoring — pay for active compute between steps.',
     vsBuildYourOwn: 'Always-on container or cold-start-heavy vanilla serverless without workflow-aware scheduling.',
     tradeoff: 'Less machine-shape control than raw K8s; right-sized for demo and preview deploys.',
     backendNodeId: 'fluid',
@@ -302,6 +303,7 @@ export const WORKFLOW_STEPS: WorkflowStepEntry[] = [
       'generateTestCases → generateWithTier + AI SDK Output.object({ schema }) for Zod-validated cases.',
       'Tier: fast (Haiku) unless input.generationMode === "adversarial" → strong (Sonnet).',
       'On 429/5xx: RetryableError("generate-test-cases: …", { retryAfter: 2^attempt × 1000ms }), maxRetries 3.',
+      'Over-count LLM output is trimmed to caseCount; under-count retries with reinforced prompt before failing.',
     ],
   },
   {
@@ -338,15 +340,15 @@ export const WORKFLOW_STEPS: WorkflowStepEntry[] = [
     color: '#b45309',
     workflowStep: 'scoreResultsStep',
     doesWhat:
-      'LLM-as-judge scores each case on four rubric dimensions. Dual mode runs fast + strong judges in parallel; flag if total < 14. Per-agent description for matrix runs.',
+      'LLM-as-judge scores each case on four rubric dimensions. Modes: strong-only, dual (fast + strong), or multi-vendor (Sonnet + OpenAI). Flag if total < 14. Per-agent description for matrix runs.',
     infrastructure: [
-      { name: 'AI Gateway (strong / dual)', why: 'Sonnet for judgment; dual catches tier drift', backendNodeId: 'ai-gateway' },
+      { name: 'AI Gateway (fast / strong / openai)', why: 'Tier routing; multi-vendor cross-check via BYOK', backendNodeId: 'ai-gateway' },
       { name: 'agents/score-results.ts', why: 'Structured rubric output; incremental KV per case', backendNodeId: 'agents' },
       { name: 'lib/multi-model-eval.ts', why: 'Tier disagreement surfaced in UI', backendNodeId: 'agents' },
     ],
     kvWrites: ['results[].scores, total, flagged, reasoning', 'promptVersions.scoreResults'],
     codePaths: ['agents/score-results.ts', 'lib/prompts.ts', 'lib/multi-model-eval.ts'],
-    relatedAdrs: ['ADR-003', 'ADR-009'],
+    relatedAdrs: ['ADR-003', 'ADR-009', 'ADR-011'],
     technicalDetails: [
       'Loop over results[] — after each case: updateRun({ results: [...updatedResults] }) for live UI progress.',
       'scoringMode "dual": Promise.all([score fast, score strong]) per case; flag uses strong tier, stores multiModelScore.',
@@ -450,11 +452,12 @@ export const ADR_ENTRIES: AdrEntry[] = [
   },
   {
     id: 'ADR-003',
-    title: 'Two model tiers via AI Gateway',
+    title: 'Model tiers via AI Gateway',
     status: 'Accepted',
-    context: 'Test generation is structured and high-volume; scoring needs judgment.',
-    decision: 'fast (Haiku/Flash) for generation; strong (Sonnet) for scoring, reports, fixes.',
-    consequences: ['~8× cost savings on generation', 'Single routing layer in lib/ai.ts', 'Escalation on 429/500'],
+    context: 'Test generation is structured and high-volume; scoring needs judgment; cross-vendor review needs a second provider.',
+    decision:
+      'fast (Haiku/Flash) for standard generation; strong (Sonnet) for adversarial generation, scoring, reports, fixes; openai (gpt-4.1 via BYOK) for optional multi-vendor judge.',
+    consequences: ['~8× cost savings on generation vs Sonnet everywhere', 'Single routing layer in lib/ai.ts', 'Escalation on 429/500'],
   },
   {
     id: 'ADR-004',
@@ -521,6 +524,19 @@ export const ADR_ENTRIES: AdrEntry[] = [
       'Phase 1 pilots three agents',
     ],
   },
+  {
+    id: 'ADR-011',
+    title: 'Multi-vendor scoring via Gateway BYOK',
+    status: 'Accepted',
+    context: 'Dual-tier scoring catches within-vendor drift but not cross-vendor disagreement.',
+    decision:
+      'scoringMode multi-vendor runs Sonnet + OpenAI in parallel per case; Sonnet is primary; OpenAI configured in Gateway BYOK only.',
+    consequences: [
+      '~2× scorer cost vs strong-only',
+      'Vendor disagreements in TierComparison UI',
+      'L3 gate remains dual-tier (no live OpenAI in CI)',
+    ],
+  },
 ];
 
 export const INFRA_LAYERS: InfraLayer[] = [
@@ -556,10 +572,11 @@ export const INFRA_LAYERS: InfraLayer[] = [
       {
         name: 'AI Gateway',
         role: 'Tier routing + provider fallback in lib/ai.ts',
-        why: 'Model arbitrage: Haiku primary, Flash/Sonnet fallback on 429; unified billing via gateway.getGenerationInfo',
+        why: 'fast / strong / openai tiers; Haiku primary with Flash/Sonnet fallback on 429; OpenAI BYOK for multi-vendor judge',
       },
       { name: 'AI SDK v6', role: 'Structured output, streaming', why: 'Zod-validated agent steps' },
       { name: '6 agents', role: 'generate · sandbox · score · report · fixes', why: 'Single-responsibility steps' },
+      { name: 'LLM trace', role: 'lib/llm-trace.ts', why: 'System/user/assistant per Gateway call on run report' },
     ],
   },
   {
@@ -595,11 +612,12 @@ export const INFRA_LAYERS: InfraLayer[] = [
 /** One-liners for interview cheat sheet (Backend map tab). */
 export const BACKEND_CHEAT_SHEET: string[] = [
   'Fluid Compute (vercel.json) — bursty eval workflows scale between steps; pay for active compute.',
-  'AI Gateway (lib/ai.ts) — fast vs strong tiers; Haiku primary with Flash/Sonnet fallback on 429.',
+  'AI Gateway (lib/ai.ts) — fast / strong / openai tiers; Haiku primary with Flash/Sonnet fallback on 429; OpenAI BYOK for multi-vendor.',
   'Workflow SDK — durable checkpointed steps; approval hook blocks fixes until POST /approve.',
   'Vercel Sandbox — one microVM per test case; SSRF containment with unverified HTTP fallback.',
   'Vercel KV — run:{id} document polled by SSE; incremental results between workflow steps.',
   'Human gate — awaiting_approval status before suggest-fixes runs on flagged cases.',
+  'LLM trace — every Gateway call stores system/user/assistant on the run for interview/debug.',
 ];
 
 export const BACKEND_MAP_NODES: BackendMapNode[] = [
@@ -668,14 +686,14 @@ export const BACKEND_MAP_NODES: BackendMapNode[] = [
     layer: 'ai',
     color: '#b45309',
     interviewLine:
-      'All LLM calls route through AI Gateway for model arbitrage — Haiku for generation, Sonnet for scoring, with provider fallback on 429.',
+      'All LLM calls route through AI Gateway — Haiku for volume, Sonnet for judgment, optional OpenAI BYOK for multi-vendor scoring.',
     whatHappens:
-      'lib/ai.ts generateWithTier and streamWithTier use gateway(primary) with TIER_MODELS fallbacks. gateway.getGenerationInfo resolves per-call cost when missing from the response. Observability records step-level spend.',
+      'lib/ai.ts generateWithTier and streamWithTier use gateway(primary) with TIER_MODELS fallbacks. Tiers: fast, strong, openai (gpt-4.1). gateway.getGenerationInfo resolves per-call cost when missing from the response. /api/health pings all three tiers.',
     vsBuildYourOwn: 'Direct Anthropic/OpenAI SDKs per agent with duplicated retry and billing aggregation.',
     tradeoff: 'Gateway tags evalkit.tier + evalkit.step on every call for Observability filters.',
     codePaths: ['lib/ai.ts', 'lib/observability.ts'],
-    relatedAdrs: ['ADR-003', 'ADR-009'],
-    uiPointer: 'Run page → Cost & latency card',
+    relatedAdrs: ['ADR-003', 'ADR-009', 'ADR-011'],
+    uiPointer: 'Run page → Cost & latency card; Home → /api/health',
   },
   {
     id: 'agents',
@@ -685,7 +703,7 @@ export const BACKEND_MAP_NODES: BackendMapNode[] = [
     interviewLine:
       'Six single-purpose agent modules — generate, sandbox, score, report, fixes — each with versioned prompts hashed in KV.',
     whatHappens:
-      'generate-cases uses fast or strong tier by mode. score-results supports dual-tier parallel judges. build-report streams markdown. Prompt templates live in lib/prompts.ts with stable hashes on the run.',
+      'generate-cases uses fast or strong tier by mode; trims over-count LLM output. score-results supports dual or multi-vendor parallel judges. build-report streams markdown. LLM trace stored per call.',
     codePaths: [
       'agents/generate-cases.ts',
       'agents/score-results.ts',
@@ -693,7 +711,7 @@ export const BACKEND_MAP_NODES: BackendMapNode[] = [
       'agents/suggest-fixes.ts',
       'lib/prompts.ts',
     ],
-    relatedAdrs: ['ADR-003', 'ADR-009'],
+    relatedAdrs: ['ADR-003', 'ADR-009', 'ADR-011'],
   },
   {
     id: 'sandbox',
@@ -795,8 +813,8 @@ export const EVAL_TYPE_ENTRIES: EvalTypeEntry[] = [
     id: 'judge',
     name: 'LLM-as-judge',
     tagline: 'Rubric scoring when ground truth is subjective',
-    evalKitMapping: 'Four-dimension rubric; dual-tier to catch judge drift.',
-    pitfalls: ['Judge bias', 'Dual tier adds cost but surfaces disagreement'],
+    evalKitMapping: 'Four-dimension rubric; dual-tier or multi-vendor (Sonnet + OpenAI) to catch judge drift.',
+    pitfalls: ['Judge bias', 'Multi-judge modes add cost but surface disagreement'],
   },
   {
     id: 'regression',
@@ -824,6 +842,192 @@ export const EVAL_TYPE_ENTRIES: EvalTypeEntry[] = [
     ],
   },
 ];
+
+export type SystemOverviewNode = {
+  id: string;
+  label: string;
+  sublabel?: string;
+  color: string;
+  backendNodeId?: string;
+  workflowStepId?: string;
+};
+
+export type SystemOverviewRow = {
+  id: string;
+  title: string;
+  description: string;
+  nodes: SystemOverviewNode[];
+};
+
+export type SystemOverviewPipelineStep = {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  workflowStepId?: string;
+};
+
+/** High-level system map for the Overview tab — interview walkthrough. */
+export const SYSTEM_OVERVIEW = {
+  tagline:
+    'EvalKit orchestrates a durable eval pipeline on Vercel: isolated sandbox calls to your deployed chatbot, multi-model rubric scoring, streaming report, and human approval before prompt fixes.',
+  dataFlow: [
+    'User submits URL + behavioral contract (or demo preset) from the home page.',
+    'POST /api/runs creates a run in KV and starts evalRunWorkflow on Fluid Compute.',
+    'Workflow steps checkpoint to KV — the run page polls partial state during long sandbox phases.',
+    'Each agent step calls AI Gateway (fast / strong / openai) or Vercel Sandbox (per case).',
+    'Report streams via SSE; operator approves fixes; metrics and LLM trace stored on the run.',
+  ],
+  pipelineSteps: [
+    { id: 'generate', label: 'Generate', icon: '🧪', color: '#5c7c5c', workflowStepId: 'generate-test-cases' },
+    { id: 'sandbox', label: 'Sandbox ×N', icon: '🔒', color: '#0d9488', workflowStepId: 'run-sandbox' },
+    { id: 'score', label: 'Score', icon: '⚖️', color: '#b45309', workflowStepId: 'score-results' },
+    { id: 'report', label: 'Report', icon: '📡', color: '#7c3aed', workflowStepId: 'build-report' },
+    { id: 'approval', label: 'Approval', icon: '🛡️', color: '#dc2626', workflowStepId: 'await-approval' },
+    { id: 'fixes', label: 'Fixes', icon: '🔧', color: '#2563eb', workflowStepId: 'apply-fixes' },
+  ] satisfies SystemOverviewPipelineStep[],
+  rows: [
+    {
+      id: 'client',
+      title: 'Client',
+      description: 'React UI — start eval, watch live progress, inspect trace and tier comparison.',
+      nodes: [
+        {
+          id: 'home',
+          label: 'Home /',
+          sublabel: 'EvalStartForm · scoring modes',
+          color: '#78716c',
+          backendNodeId: 'browser-ui',
+        },
+        {
+          id: 'run-page',
+          label: 'Run /runs/[id]',
+          sublabel: 'Report · trace · approval',
+          color: '#78716c',
+          backendNodeId: 'browser-ui',
+        },
+        {
+          id: 'architecture-page',
+          label: 'Architecture',
+          sublabel: 'This reference UI',
+          color: '#78716c',
+        },
+      ],
+    },
+    {
+      id: 'edge',
+      title: 'Edge & API',
+      description: 'Thin triggers — validate with Zod, write KV, hand off to Workflow SDK.',
+      nodes: [
+        {
+          id: 'server-actions',
+          label: 'Server actions',
+          sublabel: 'createRunAction',
+          color: '#5c7c5c',
+          backendNodeId: 'api-routes',
+        },
+        {
+          id: 'api-runs',
+          label: 'POST /api/runs',
+          sublabel: 'workflow/api start',
+          color: '#5c7c5c',
+          backendNodeId: 'api-routes',
+        },
+        {
+          id: 'health',
+          label: 'GET /api/health',
+          sublabel: 'fast · strong · openai',
+          color: '#5c7c5c',
+          backendNodeId: 'ai-gateway',
+        },
+      ],
+    },
+    {
+      id: 'compute',
+      title: 'Compute & orchestration',
+      description: 'Fluid Compute hosts API routes and durable workflow steps with checkpointed retries.',
+      nodes: [
+        {
+          id: 'fluid',
+          label: 'Fluid Compute',
+          sublabel: 'vercel.json fluid: true',
+          color: '#64748b',
+          backendNodeId: 'fluid',
+        },
+        {
+          id: 'workflow',
+          label: 'Workflow SDK',
+          sublabel: 'evalRunWorkflow',
+          color: '#57534e',
+          backendNodeId: 'workflow',
+        },
+      ],
+    },
+    {
+      id: 'platform',
+      title: 'Platform services',
+      description: 'Shared primitives every pipeline step depends on.',
+      nodes: [
+        {
+          id: 'gateway',
+          label: 'AI Gateway',
+          sublabel: 'fast · strong · openai',
+          color: '#b45309',
+          backendNodeId: 'ai-gateway',
+        },
+        {
+          id: 'sandbox',
+          label: 'Vercel Sandbox',
+          sublabel: '1 microVM / case',
+          color: '#0d9488',
+          backendNodeId: 'sandbox',
+        },
+        {
+          id: 'kv',
+          label: 'Vercel KV',
+          sublabel: 'run:{id}',
+          color: '#7c3aed',
+          backendNodeId: 'kv',
+        },
+        {
+          id: 'otel',
+          label: 'Observability',
+          sublabel: 'spans · cost · LLM trace',
+          color: '#4338ca',
+          backendNodeId: 'observability',
+        },
+      ],
+    },
+    {
+      id: 'external',
+      title: 'External',
+      description: 'Targets and model providers — never called directly from app code.',
+      nodes: [
+        {
+          id: 'target',
+          label: 'Target chatbot',
+          sublabel: 'message-json or harness-json',
+          color: '#0f766e',
+          backendNodeId: 'agent-matrix',
+        },
+        {
+          id: 'providers',
+          label: 'Model providers',
+          sublabel: 'Anthropic + OpenAI via Gateway BYOK',
+          color: '#b45309',
+          backendNodeId: 'ai-gateway',
+        },
+      ],
+    },
+  ] satisfies SystemOverviewRow[],
+  vercelPrimitives: [
+    { name: 'Workflow SDK', role: 'Durable steps + approval hook', adr: 'ADR-001' },
+    { name: 'Fluid Compute', role: 'Scale between bursty steps', adr: 'ADR-001' },
+    { name: 'AI Gateway', role: 'Three-tier routing + BYOK', adr: 'ADR-003', adr2: 'ADR-011' },
+    { name: 'Vercel Sandbox', role: 'SSRF-safe target calls', adr: 'ADR-002' },
+    { name: 'Vercel KV', role: 'Run document + SSE poll', adr: 'ADR-004' },
+  ],
+};
 
 // Legacy node graph (used for data-flow mini map)
 export type ArchitectureNodeKind =

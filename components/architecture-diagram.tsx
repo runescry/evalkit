@@ -18,6 +18,7 @@ import {
   type PipelineStage,
   type WorkflowStepEntry,
 } from '@/lib/architecture-graph';
+import { SystemOverviewDiagram } from '@/components/system-overview-diagram';
 import { cn } from '@/lib/utils';
 
 function rgb(hex: string): string {
@@ -324,6 +325,7 @@ function BackendMapNodeCard({
 }
 
 const TABS: { id: ArchitectureTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
   { id: 'workflow', label: 'Workflow' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'backend-map', label: 'Backend map' },
@@ -333,7 +335,7 @@ const TABS: { id: ArchitectureTab; label: string }[] = [
 ];
 
 export function ArchitectureDiagram() {
-  const [tab, setTab] = useState<ArchitectureTab>('workflow');
+  const [tab, setTab] = useState<ArchitectureTab>('overview');
   const [selectedStage, setSelectedStage] = useState(0);
   const [selectedWorkflowStep, setSelectedWorkflowStep] = useState(0);
   const [expandedStage, setExpandedStage] = useState<string | null>(PIPELINE_STAGES[0]!.id);
@@ -384,6 +386,22 @@ export function ArchitectureDiagram() {
     setTab('backend-map');
     setSelectedBackendNode(nodeId);
   }, []);
+
+  const navigateOverview = useCallback(
+    (targetTab: ArchitectureTab, id?: string) => {
+      setTab(targetTab);
+      if (targetTab === 'backend-map' && id) {
+        setSelectedBackendNode(id);
+      }
+      if (targetTab === 'workflow' && id) {
+        const index = WORKFLOW_STEPS.findIndex((step) => step.id === id);
+        if (index >= 0) {
+          setSelectedWorkflowStep(index);
+        }
+      }
+    },
+    [],
+  );
 
   const selectWorkflowStep = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(index, WORKFLOW_STEPS.length - 1));
@@ -502,6 +520,10 @@ export function ArchitectureDiagram() {
           </button>
         ))}
       </div>
+
+      {tab === 'overview' ? (
+        <SystemOverviewDiagram onNavigate={navigateOverview} />
+      ) : null}
 
       {tab === 'workflow' ? (
         <div className="space-y-4">

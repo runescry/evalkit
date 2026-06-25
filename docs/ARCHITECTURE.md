@@ -2,17 +2,45 @@
 
 AI eval harness: URL + description → test cases → sandbox execution → rubric scoring → streaming report → human-approved fixes.
 
-**Live reference:** [`/architecture`](/architecture) — Workflow (step-by-step + KV writes), Pipeline (v1 vs production tradeoffs), Backend map (Fluid, Gateway, Sandbox, KV), ADRs, eval patterns. Deep-link: `#generate-test-cases`, `#ai-gateway`, `#sandbox`, etc.
+**Live reference:** [`/architecture`](/architecture) — **Overview** (high-level system diagram + Vercel primitives), Workflow (step-by-step + KV writes), Pipeline (v1 vs production tradeoffs), Backend map, ADRs, eval patterns. Deep-link: `#ai-gateway`, `#generate-test-cases`, `#sandbox`, etc.
+
+## High-level system map
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Browser — / (start eval) · /runs/[id] (report) · /architecture │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ server actions · POST /api/runs
+┌────────────────────────────▼────────────────────────────────────┐
+│  Next.js on Fluid Compute (vercel.json fluid: true)              │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ Workflow SDK — evalRunWorkflow (durable, checkpointed)      │ │
+│  │  generate → sandbox×N → score → report → approval → fixes │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────┬──────────────┬──────────────┬──────────────┬──────────────┘
+      │              │              │              │
+┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼──────────┐
+│AI Gateway │  │  Sandbox  │  │ Vercel KV │  │ Observability  │
+│fast/strong│  │ 1 VM/case │  │ run:{id}  │  │ spans · trace  │
+│  + openai │  │ fan-out   │  │ SSE poll  │  │ cost backfill  │
+└─────┬─────┘  └─────┬─────┘  └───────────┘  └────────────────┘
+      │              │
+┌─────▼─────┐  ┌─────▼──────────────┐
+│ Anthropic │  │ Target chatbot URL │
+│ OpenAI    │  │ (message / harness)│
+│ (BYOK)    │  └────────────────────┘
+└───────────┘
+```
 
 ## Data flow
 
 ```
 User (URL + description, or demo preset)
-    → POST /api/runs
+    → POST /api/runs (or server action)
     → Workflow (eval-run.ts)
         → generate-test-cases (fast or strong if adversarial)
         → run-sandbox × N (fan-out 5 or 2 for harness)
-        → score-results (strong, or dual fast+strong)
+        → score-results (strong, dual fast+strong, or multi-vendor Sonnet+OpenAI)
         → build-report (strong model, stream)
         → await-approval (hook)
         → suggest-fixes (conditional)
@@ -33,16 +61,27 @@ See [ADR-010](./DECISIONS.md) and [AIDEA-PERSONA-EVAL-HANDOFF.md](./AIDEA-PERSON
 
 ## Model routing
 
+All calls go through `lib/ai.ts` → Vercel AI Gateway. No provider SDKs or `OPENAI_API_KEY` in app code.
+
 | Step | Tier | Models (via AI Gateway) |
 |------|------|-------------------------|
-| Test case generation (standard) | fast | claude-haiku-4-5, gemini-flash fallback |
-| Test case generation (adversarial) | strong | claude-sonnet-4-6 |
-| Rubric scoring | strong (primary) | claude-sonnet-4-6 |
-| Rubric scoring (dual mode) | fast + strong | parallel per case; strong drives flag |
-| Report synthesis | strong | claude-sonnet-4-6 (stream) |
-| Prompt fixes | strong | claude-sonnet-4-6 |
+| Test case generation (standard) | `fast` | claude-haiku-4-5, gemini-flash fallback |
+| Test case generation (adversarial) | `strong` | claude-sonnet-4-6 |
+| Rubric scoring (default) | `strong` | claude-sonnet-4-6 |
+| Rubric scoring (`dual`) | `fast` + `strong` | parallel per case; **strong** drives flag |
+| Rubric scoring (`multi-vendor`) | `strong` + `openai` | parallel per case; **Sonnet** primary; OpenAI via BYOK |
+| Report synthesis | `strong` | claude-sonnet-4-6 (stream) |
+| Prompt fixes | `strong` | claude-sonnet-4-6 |
 
-All calls go through `lib/ai.ts`. Fast tier escalates to strong on 429/500.
+`/api/health` pings `fast`, `strong`, and `openai` tiers. Fast tier escalates to strong on 429/500.
+
+## Scoring modes (home page)
+
+| `scoringMode` | Judges | Use when |
+|---------------|--------|----------|
+| `dual` | Haiku + Sonnet | Same-vendor tier calibration |
+| `multi-vendor` | Sonnet + OpenAI | Cross-vendor disagreement (ADR-011) |
+| `strong` | Sonnet only | Lowest scorer cost |
 
 ## KV schema
 
@@ -63,6 +102,7 @@ type EvalRun = {
   error: string | null
   promptVersions?: Record<string, { version: string; hash: string }>
   metrics?: RunMetrics         // per-step cost, tokens, latency
+  llmTrace?: LlmTraceEntry[]  // system/user/assistant per Gateway call
 }
 ```
 
@@ -101,13 +141,14 @@ Report streams to KV every ~120 chars; UI polls SSE every 400ms.
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Start eval — custom input or demo presets (`lib/demo-presets.ts`) |
-| `/runs/[id]` | Report, progress, flagged findings, tier comparison, **LLM prompts**, approval |
-| `/architecture` | Interview/onboarding reference (`lib/architecture-graph.ts`) |
+| `/` | Start eval — custom input or demo presets; scoring mode dropdown |
+| `/runs/[id]` | Report, progress, flagged findings, tier comparison, **LLM trace**, approval |
+| `/architecture` | Interview reference — Overview diagram + workflow/backend/ADRs |
+| `/api/health` | Gateway tier health (fast, strong, openai) |
 
 ## Prompt inspection
 
-Runs store `promptVersions` (version + SHA-256 of system template). The report page reconstructs full system/user messages via `lib/run-prompts.ts` — no duplicate storage in KV.
+Runs store `promptVersions` (version + SHA-256 of system template). The report page shows stored `llmTrace` or reconstructs prompts via `lib/run-prompts.ts`.
 
 See [PROMPTS.md](./PROMPTS.md).
 
@@ -117,8 +158,8 @@ See [PROMPTS.md](./PROMPTS.md).
 |-----------|----------------|
 | Workflow SDK | Multi-minute pipeline + approval hook |
 | Fluid Compute | Bursty steps + hook idle (`vercel.json`) |
-| AI Gateway | Tier routing, fallback, cost lookup |
+| AI Gateway | Three-tier routing, fallback, cost lookup, OpenAI BYOK |
 | Sandbox | Untrusted target URLs |
 | KV | Run document + SSE poll read model |
 
-Trade-offs: [DECISIONS.md](./DECISIONS.md) · backend map: `/architecture` → Backend map tab.
+Trade-offs: [DECISIONS.md](./DECISIONS.md) · interactive map: `/architecture` → Overview tab.

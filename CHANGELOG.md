@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agent-matrix eval** (`evalMode: agent-matrix`) — per-agent URLs, `agentId` on test cases, `harness-json` sandbox contract, KB fixture overlays (`lib/agent-matrix.ts`, ADR-010)
 - **Demo presets** — one-click aidea fast-chat and 3-agent persona matrix pilot (`lib/demo-presets.ts`, `fixtures/aidea-*.json`)
 - **Adversarial generation + dual scoring** — `generationMode: adversarial`, `scoringMode: dual`, tier comparison UI (`lib/multi-model-eval.ts`, ADR-009)
-- **Architecture reference page** — `/architecture` with Workflow, Pipeline, Backend map, ADRs, Infrastructure, Eval patterns (`lib/architecture-graph.ts`)
+- **Architecture reference page** — `/architecture` with Overview diagram, Workflow, Pipeline, Backend map, ADRs, Infrastructure, Eval patterns (`lib/architecture-graph.ts`)
 - **Run report UX** — app shell/sidebar, pipeline progress, live activity stream, flagged findings with harness validation context, cost summary
 - **LLM trace panel** — system/user/assistant messages per Gateway call on `/runs/[id]`; stored at call time in `run.llmTrace` with snapshot fallback (`lib/llm-trace.ts`, `components/llm-trace-panel.tsx`)
 - **Prompt reconstruction** — `lib/run-prompts.ts` rebuilds prompts for older runs without stored trace
@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Architecture reference** — `/architecture` Overview tab with high-level system diagram, pipeline strip, and Vercel primitives; docs/ARCHITECTURE.md refreshed for multi-vendor and three-tier Gateway routing
 - Scorer prompt **v1.3.0** — harness `validation.ok=false` ≠ narrative hallucination when `gmail_read` ran; surfaces `validationErrors` / `validationWarnings` on sandbox results
 - Generate-cases prompts **v1.2.0** — agent-matrix catalog, fast-chat scope constraints, adversarial red-team variant
 - Build-report prompt **v1.1.0** — persona matrix table in report structure
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Generate cases** — trim over-count LLM output to `caseCount`; retry under-count with reinforced prompt before workflow fails
 - Architecture **Pipeline** tab — “Next step” now syncs accordion selection and scrolls the active stage into view
 - **Run cost metrics** — dual-score parallel calls no longer race on KV merge; `recordAiCallMetrics` retries read–merge–write; `generationIds` + `backfillRunMetricsCosts` after score/report/fixes; Gateway cost lookup 8×400ms
 - **Cost UI** — summary card visible while run is active (“Cost pending…”); metrics poll until calls recorded or cost backfills

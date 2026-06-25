@@ -4,6 +4,7 @@ import {
   BACKEND_FLOW_ORDER,
   BACKEND_MAP_NODES,
   PIPELINE_STAGES,
+  SYSTEM_OVERVIEW,
   VERCEL_TRADEOFFS,
   WORKFLOW_OVERVIEW,
   WORKFLOW_STEPS,
@@ -41,6 +42,12 @@ describe('lib/architecture-graph backend map', () => {
     const sandbox = PIPELINE_STAGES.find((s) => s.id === 'sandbox');
     expect(sandbox?.v1Approach).toContain('harness-json');
     expect(sandbox?.v1Approach).toContain('90s');
+  });
+
+  it('documents multi-vendor scoring in score pipeline stage', () => {
+    const score = PIPELINE_STAGES.find((s) => s.id === 'score');
+    expect(score?.v1Approach).toContain('Multi-vendor');
+    expect(score?.adrIds).toContain('ADR-011');
   });
 });
 
@@ -84,5 +91,20 @@ describe('lib/architecture-graph workflow view', () => {
     expect(VERCEL_TRADEOFFS.length).toBeGreaterThanOrEqual(5);
     const workflow = VERCEL_TRADEOFFS.find((t) => t.component === 'Workflow SDK');
     expect(workflow?.vsBuildYourOwn).toContain('Temporal');
+  });
+});
+
+describe('lib/architecture-graph system overview', () => {
+  it('defines layered rows and pipeline steps for the overview tab', () => {
+    expect(SYSTEM_OVERVIEW.rows.length).toBeGreaterThanOrEqual(4);
+    expect(SYSTEM_OVERVIEW.pipelineSteps.length).toBe(6);
+    expect(SYSTEM_OVERVIEW.dataFlow.length).toBeGreaterThanOrEqual(4);
+    expect(SYSTEM_OVERVIEW.vercelPrimitives.some((p) => p.name === 'AI Gateway')).toBe(true);
+  });
+
+  it('links overview nodes to backend map where applicable', () => {
+    const linked = SYSTEM_OVERVIEW.rows.flatMap((row) => row.nodes).filter((n) => n.backendNodeId);
+    expect(linked.some((n) => n.backendNodeId === 'ai-gateway')).toBe(true);
+    expect(linked.some((n) => n.backendNodeId === 'workflow')).toBe(true);
   });
 });
