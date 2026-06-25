@@ -326,10 +326,10 @@ function BackendMapNodeCard({
 
 const TABS: { id: ArchitectureTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'workflow', label: 'Workflow' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'backend-map', label: 'Backend map' },
+  { id: 'workflow', label: 'Workflow' },
   { id: 'decisions', label: 'ADRs' },
+  { id: 'backend-map', label: 'Backend map' },
   { id: 'infrastructure', label: 'Infrastructure' },
   { id: 'eval-types', label: 'Eval patterns' },
 ];
@@ -465,44 +465,75 @@ export function ArchitectureDiagram() {
             tradeoffs at each stage.
           </p>
         </div>
-        {tab === 'workflow' ? (
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={advanceWorkflowStep}
-              disabled={selectedWorkflowStep >= WORKFLOW_STEPS.length - 1}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
-            >
-              Next step ({selectedWorkflowStep + 1}/{WORKFLOW_STEPS.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => selectWorkflowStep(0)}
-              className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-            >
-              Reset
-            </button>
-          </div>
-        ) : null}
-        {tab === 'pipeline' ? (
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={advanceStage}
-              disabled={selectedStage >= PIPELINE_STAGES.length - 1}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
-            >
-              Next step ({selectedStage + 1}/{PIPELINE_STAGES.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => selectPipelineStage(0)}
-              className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-            >
-              Reset
-            </button>
-          </div>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {tab === 'workflow' ? (
+            <>
+              <button
+                type="button"
+                onClick={advanceWorkflowStep}
+                disabled={selectedWorkflowStep >= WORKFLOW_STEPS.length - 1}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
+              >
+                Next step ({selectedWorkflowStep + 1}/{WORKFLOW_STEPS.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => selectWorkflowStep(0)}
+                className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+              >
+                Reset
+              </button>
+            </>
+          ) : null}
+          {tab === 'pipeline' ? (
+            <>
+              <button
+                type="button"
+                onClick={advanceStage}
+                disabled={selectedStage >= PIPELINE_STAGES.length - 1}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity disabled:opacity-40"
+              >
+                Next step ({selectedStage + 1}/{PIPELINE_STAGES.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => selectPipelineStage(0)}
+                className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+              >
+                Reset
+              </button>
+            </>
+          ) : null}
+          {/* Linear section nav — always visible */}
+          {(() => {
+            const currentIndex = TABS.findIndex((t) => t.id === tab);
+            const prevTab = TABS[currentIndex - 1];
+            const nextTab = TABS[currentIndex + 1];
+            return (
+              <div className="flex items-center gap-1 border-l border-border pl-2">
+                <button
+                  type="button"
+                  disabled={!prevTab}
+                  onClick={() => prevTab && setTab(prevTab.id)}
+                  className="rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                  title={prevTab ? `← ${prevTab.label}` : undefined}
+                >
+                  ←
+                </button>
+                <span className="text-[11px] font-medium text-muted-foreground">{currentIndex + 1}/{TABS.length}</span>
+                <button
+                  type="button"
+                  disabled={!nextTab}
+                  onClick={() => nextTab && setTab(nextTab.id)}
+                  className="rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                  title={nextTab ? `${nextTab.label} →` : undefined}
+                >
+                  →
+                </button>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-xl bg-muted/60 p-1">
