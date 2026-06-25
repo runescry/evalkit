@@ -108,6 +108,22 @@ export function assertCategoryCoverage(
   }
 }
 
+const MAX_GENERATE_ATTEMPTS = 3;
+
+function trimExcessCases(
+  rawCases: z.infer<typeof llmTestCaseSchema>[],
+  caseCount: number,
+): z.infer<typeof llmTestCaseSchema>[] {
+  if (rawCases.length > caseCount) {
+    return rawCases.slice(0, caseCount);
+  }
+  return rawCases;
+}
+
+function countMismatchSuffix(received: number, expected: number): string {
+  return `\n\nIMPORTANT: Your previous response had ${received} test cases. Return exactly ${expected} test cases — no more, no fewer.`;
+}
+
 export async function generateTestCases(
   runId: string,
   input: EvalRunInput,
@@ -135,20 +151,38 @@ async function generateTestCasesWithAi(
     agents: input.agents,
   });
 
-  const result = await generateWithTier({
-    tier: adversarial ? 'strong' : 'fast',
-    step: adversarial ? 'generate-test-cases-adversarial' : 'generate-test-cases',
-    runId,
-    system: promptTemplate.system,
-    prompt: userPrompt,
-    output: Output.object({ schema: generateTestCasesResponseSchema }),
-  });
+  let parsed: z.infer<typeof generateTestCasesResponseSchema> | null = null;
+  let result: Awaited<ReturnType<typeof generateWithTier>> | null = null;
+  let prompt = userPrompt;
 
-  const parsed = generateTestCasesResponseSchema.parse(result.output);
-  if (parsed.testCases.length !== input.caseCount) {
-    throw new Error(
-      `Expected ${input.caseCount} test cases, got ${parsed.testCases.length}`,
-    );
+  for (let attempt = 1; attempt <= MAX_GENERATE_ATTEMPTS; attempt++) {
+    result = await generateWithTier({
+      tier: adversarial ? 'strong' : 'fast',
+      step: adversarial ? 'generate-test-cases-adversarial' : 'generate-test-cases',
+      runId,
+      system: promptTemplate.system,
+      prompt,
+      output: Output.object({ schema: generateTestCasesResponseSchema }),
+    });
+
+    const raw = generateTestCasesResponseSchema.parse(result.output);
+    const trimmed = trimExcessCases(raw.testCases, input.caseCount);
+    if (trimmed.length === input.caseCount) {
+      parsed = { testCases: trimmed };
+      break;
+    }
+
+    if (attempt === MAX_GENERATE_ATTEMPTS) {
+      throw new Error(
+        `Expected ${input.caseCount} test cases, got ${raw.testCases.length}`,
+      );
+    }
+
+    prompt = userPrompt + countMismatchSuffix(raw.testCases.length, input.caseCount);
+  }
+
+  if (!parsed || !result) {
+    throw new Error(`Expected ${input.caseCount} test cases, generation failed`);
   }
 
   const testCases = assignTestCaseIds(parsed.testCases, runId);

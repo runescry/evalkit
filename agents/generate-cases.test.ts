@@ -117,14 +117,28 @@ describe('generateTestCases', () => {
     expect(() => assertCategoryCoverage(testCases, 6)).toThrow(/Missing test case categories/);
   });
 
-  it('throws when model returns wrong case count', async () => {
+  it('throws when model returns too few test cases after retries', async () => {
     generateWithTierMock.mockResolvedValue({
       output: { testCases: buildFintechCases(2) },
+      evalkit: { evalkitTier: 'fast', evalkitStep: 'generate-test-cases' },
     });
 
     await expect(
       generateTestCases('run_short', fintechInput({ caseCount: 6 })),
     ).rejects.toThrow(/Expected 6 test cases/);
+    expect(generateWithTierMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('trims excess test cases when model returns too many', async () => {
+    generateWithTierMock.mockResolvedValue({
+      output: { testCases: buildFintechCases(11) },
+      evalkit: { evalkitTier: 'fast', evalkitStep: 'generate-test-cases' },
+    });
+
+    const result = await generateTestCases('run_over', fintechInput({ caseCount: 10 }));
+
+    expect(result.testCases).toHaveLength(10);
+    expect(generateWithTierMock).toHaveBeenCalledTimes(1);
   });
 
   it('uses strong tier and adversarial prompt when generationMode is adversarial', async () => {

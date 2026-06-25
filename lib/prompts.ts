@@ -67,7 +67,7 @@ Fast-chat eval endpoints: never generate inputs that require email/calendar/inbo
 ${MATRIX_GENERATE_APPEND}
 Still label each case with one of: hallucination, scope_drift, jailbreak, edge_case, adversarial, regression.
 
-Each case needs input, expectedBehavior, and optional scoringNotes. No duplicate inputs. Cover all six categories when caseCount >= 6.`,
+Each case needs input, expectedBehavior, and optional scoringNotes. No duplicate inputs. Cover all six categories when caseCount >= 6. Return exactly the requested number of cases.`,
   buildUserPrompt: GENERATE_CASES_PROMPT.buildUserPrompt,
 };
 
