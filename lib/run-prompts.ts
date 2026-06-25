@@ -1,4 +1,5 @@
 import { descriptionForTestCase } from '@/lib/agent-matrix';
+import type { ModelTier } from '@/lib/ai';
 import {
   BUILD_REPORT_PROMPT,
   GENERATE_CASES_ADVERSARIAL_PROMPT,
@@ -22,7 +23,7 @@ export type PromptCallArtifact = {
   id: string;
   step: string;
   label: string;
-  tier?: 'fast' | 'strong';
+  tier?: ModelTier;
   testCaseId?: string;
   /** Model output shape when not plain text. */
   outputFormat?: 'structured-json' | 'markdown';
@@ -90,7 +91,7 @@ function scoreCalls(run: EvalRun): PromptCallArtifact[] {
 
   const meta = run.promptVersions?.scoreResults;
   const testCaseById = new Map(run.testCases.map((testCase) => [testCase.id, testCase]));
-  const dual = run.input.scoringMode === 'dual';
+  const scoringMode = run.input.scoringMode;
   const calls: PromptCallArtifact[] = [];
 
   for (const result of run.results) {
@@ -107,18 +108,26 @@ function scoreCalls(run: EvalRun): PromptCallArtifact[] {
       sandbox: result.sandbox,
     });
 
-    const tiers: Array<{ tier: 'fast' | 'strong'; step: string }> = dual
-      ? [
-          { tier: 'fast', step: 'score-results-fast' },
-          { tier: 'strong', step: 'score-results' },
-        ]
-      : [{ tier: 'strong', step: 'score-results' }];
+    const tiers: Array<{ tier: ModelTier; step: string }> =
+      scoringMode === 'dual'
+        ? [
+            { tier: 'fast', step: 'score-results-fast' },
+            { tier: 'strong', step: 'score-results' },
+          ]
+        : scoringMode === 'multi-vendor'
+          ? [
+              { tier: 'strong', step: 'score-results' },
+              { tier: 'openai', step: 'score-results-openai' },
+            ]
+          : [{ tier: 'strong', step: 'score-results' }];
+
+    const multiJudge = scoringMode === 'dual' || scoringMode === 'multi-vendor';
 
     for (const { tier, step } of tiers) {
       calls.push({
         id: `${step}:${result.testCaseId}`,
         step,
-        label: `Score ${result.testCaseId}${dual ? ` (${tier})` : ''}`,
+        label: `Score ${result.testCaseId}${multiJudge ? ` (${tier})` : ''}`,
         tier,
         testCaseId: result.testCaseId,
         outputFormat: 'structured-json',

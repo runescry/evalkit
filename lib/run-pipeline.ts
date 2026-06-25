@@ -79,9 +79,11 @@ export function getPipelineProgress(run: EvalRun): {
       label: 'Score results',
       state: 'pending',
       detail:
-        run.input.scoringMode === 'dual'
-          ? 'Dual-tier rubric scoring (fast + strong)…'
-          : 'Strong-tier rubric scoring…',
+        run.input.scoringMode === 'multi-vendor'
+          ? 'Multi-vendor rubric scoring (Sonnet + OpenAI)…'
+          : run.input.scoringMode === 'dual'
+            ? 'Dual-tier rubric scoring (fast + strong)…'
+            : 'Strong-tier rubric scoring…',
     },
     {
       id: 'report',

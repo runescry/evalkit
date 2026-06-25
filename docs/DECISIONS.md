@@ -115,3 +115,15 @@ Format: ADR-lite. New decisions append at the bottom.
 **Decision:** Add `evalMode: agent-matrix` with `agents[]` (per-agent URL + description + optional `sandboxContract`), `agentId` on each `TestCase`, `sandboxTimeoutMs` up to 120s, and `harness-json` contract for targets that return `{ response, toolCalls, validation }`. Scoring resolves description per agent; reports group by `agentId`.
 
 **Consequences:** Harness eval is slower and costlier than fast-chat (fan-out 2 when `sandboxTimeoutMs` > 30s). Requires target-side eval adapter (`POST /api/eval/agent` on aidea). Phase 1 pilots three agents (12 cases in `fixtures/aidea-agent-matrix-pilot.json`). Full 36-agent matrix deferred to Phase 2 nightly CI.
+
+---
+
+## ADR-011: Multi-vendor scoring via Gateway BYOK
+
+**Status:** Accepted
+
+**Context:** Dual-tier scoring (Haiku + Sonnet) catches within-vendor calibration drift but not cross-vendor disagreement. Users with OpenAI configured in Vercel AI Gateway (BYOK) want a second judge from a different provider without adding provider SDKs or env keys to the app.
+
+**Decision:** Add `scoringMode: multi-vendor` — parallel Sonnet (`strong`) + OpenAI (`openai/gpt-4.1`) rubric per case, routed only through `lib/ai.ts` and AI Gateway. Primary scores and flags use Sonnet; `multiModelScore.openai` stores the second judge. `/api/health` pings the `openai` tier. L3 eval gate remains dual-tier only (no live OpenAI in CI).
+
+**Consequences:** ~2× scorer cost vs strong-only (same order as dual). Requires OpenAI BYOK in Gateway dashboard. UI surfaces vendor disagreements via `TierComparison`.

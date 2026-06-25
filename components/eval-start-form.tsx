@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { Grid3x3, Loader2, Sparkles } from 'lucide-react';
 import {
   createRunAction,
@@ -29,7 +29,8 @@ export function EvalStartForm() {
   const [description, setDescription] = useState('');
   const [caseCount, setCaseCount] = useState(10);
   const [generationMode, setGenerationMode] = useState<'standard' | 'adversarial'>('standard');
-  const [scoringMode, setScoringMode] = useState<'dual' | 'strong'>('dual');
+  const [scoringMode, setScoringMode] = useState<'dual' | 'strong' | 'multi-vendor'>('dual');
+  const [openaiHealthy, setOpenaiHealthy] = useState<boolean | null>(null);
   const urlRef = useRef<HTMLInputElement>(null);
   const caseCountRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +56,16 @@ export function EvalStartForm() {
     setScoringMode('dual');
     syncCaseCountRef(AIDEA_AGENT_MATRIX_PILOT.defaultCaseCount);
   }
+
+  useEffect(() => {
+    void fetch('/api/health')
+      .then((response) => response.json())
+      .then((body: { tiers?: Array<{ tier: string; ok: boolean }> }) => {
+        const openai = body.tiers?.find((tier) => tier.tier === 'openai');
+        setOpenaiHealthy(openai?.ok ?? false);
+      })
+      .catch(() => setOpenaiHealthy(null));
+  }, []);
 
   return (
     <Card className="eval-card w-full shadow-sm">
@@ -143,15 +154,31 @@ export function EvalStartForm() {
             <select
               id="scoringMode"
               value={scoringMode}
-              onChange={(event) => setScoringMode(event.target.value as 'dual' | 'strong')}
+              onChange={(event) =>
+                setScoringMode(event.target.value as 'dual' | 'strong' | 'multi-vendor')
+              }
               className={selectClassName}
             >
-              <option value="dual">Dual (fast + strong)</option>
-              <option value="strong">Strong only</option>
+              <option value="dual">Dual (Haiku + Sonnet)</option>
+              <option value="multi-vendor">Multi-vendor (Sonnet + OpenAI)</option>
+              <option value="strong">Strong only (Sonnet)</option>
             </select>
             <p className="text-[11px] text-muted-foreground">
-              Dual scores each case with both tiers and highlights flag disagreements.
+              {scoringMode === 'dual'
+                ? 'Scores each case with fast and strong tiers; highlights tier disagreements.'
+                : scoringMode === 'multi-vendor'
+                  ? 'Cross-vendor review: Sonnet is primary; OpenAI is second judge via Gateway BYOK.'
+                  : 'Single Sonnet judge; lowest scorer cost.'}
             </p>
+            {scoringMode === 'multi-vendor' ? (
+              <p className="text-[11px] text-muted-foreground">
+                {openaiHealthy === true
+                  ? 'OpenAI tier healthy (see /api/health).'
+                  : openaiHealthy === false
+                    ? 'OpenAI tier not healthy — check Gateway BYOK before running.'
+                    : 'Requires OpenAI in Vercel AI Gateway (BYOK).'}
+              </p>
+            ) : null}
           </div>
         </div>
 

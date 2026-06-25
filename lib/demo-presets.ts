@@ -24,7 +24,7 @@ export type FullRunPreset = {
 export type PresetRunOverrides = {
   caseCount?: number;
   generationMode?: 'standard' | 'adversarial';
-  scoringMode?: 'dual' | 'strong';
+  scoringMode?: 'dual' | 'strong' | 'multi-vendor';
 };
 
 export const AIDEA_CO_DEMO: DemoPreset = {

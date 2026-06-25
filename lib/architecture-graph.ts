@@ -350,6 +350,7 @@ export const WORKFLOW_STEPS: WorkflowStepEntry[] = [
     technicalDetails: [
       'Loop over results[] — after each case: updateRun({ results: [...updatedResults] }) for live UI progress.',
       'scoringMode "dual": Promise.all([score fast, score strong]) per case; flag uses strong tier, stores multiModelScore.',
+      'scoringMode "multi-vendor": Promise.all([score strong, score openai]) per case; Sonnet primary, OpenAI second judge.',
       'scoreSingleResult → generateWithTier + Output.object({ scores, reasoning }); RUBRIC_FLAG_THRESHOLD = 14.',
       'Per matrix case: descriptionForTestCase resolves agent.description from agents[] map.',
       'Step return value is scored TestResult[]; promptVersions.scoreResults hash stored separately.',

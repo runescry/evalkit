@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Multi-vendor scoring** — `scoringMode: multi-vendor` runs Sonnet + OpenAI judges in parallel via Gateway BYOK; `TierComparison` shows vendor disagreements; `/api/health` pings `openai` tier (ADR-011)
 - **Agent-matrix eval** (`evalMode: agent-matrix`) — per-agent URLs, `agentId` on test cases, `harness-json` sandbox contract, KB fixture overlays (`lib/agent-matrix.ts`, ADR-010)
 - **Demo presets** — one-click aidea fast-chat and 3-agent persona matrix pilot (`lib/demo-presets.ts`, `fixtures/aidea-*.json`)
 - **Adversarial generation + dual scoring** — `generationMode: adversarial`, `scoringMode: dual`, tier comparison UI (`lib/multi-model-eval.ts`, ADR-009)

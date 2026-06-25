@@ -49,7 +49,7 @@ Hash = SHA-256 of normalized **system** prompt string (trimmed, consistent newli
 `lib/run-prompts.ts` rebuilds the exact system + user messages sent to the Gateway:
 
 1. **Generate** — one call (fast or strong)
-2. **Score** — one call per test case (×2 when `scoringMode: dual`)
+2. **Score** — one call per test case (×2 when `scoringMode: dual` or `multi-vendor`)
 3. **Build report** — when results are scored
 4. **Suggest fixes** — when `suggestedFixes` is set (including `[]`)
 

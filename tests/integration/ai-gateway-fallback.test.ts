@@ -12,4 +12,9 @@ describe('ai gateway fallback configuration', () => {
       fallbacks.indexOf('anthropic/claude-sonnet-4-6'),
     );
   });
+
+  it('openai tier routes to gpt-4.1 primary with no fallbacks', () => {
+    expect(TIER_MODELS.openai.primary).toBe('openai/gpt-4.1');
+    expect(TIER_MODELS.openai.fallbacks).toEqual([]);
+  });
 });

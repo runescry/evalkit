@@ -128,6 +128,20 @@ describe('buildRunPromptCalls', () => {
     expect(scoreCalls.map((call) => call.tier)).toEqual(['fast', 'strong', 'fast', 'strong']);
   });
 
+  it('creates multi-vendor score calls when scoringMode is multi-vendor', () => {
+    const calls = buildRunPromptCalls(
+      baseRun({
+        input: {
+          ...baseRun().input,
+          scoringMode: 'multi-vendor',
+        },
+      }),
+    );
+    const scoreCalls = calls.filter((call) => call.step.startsWith('score-results'));
+    expect(scoreCalls).toHaveLength(4);
+    expect(scoreCalls.map((call) => call.tier)).toEqual(['strong', 'openai', 'strong', 'openai']);
+  });
+
   it('embeds sandbox tool context in score user prompts', () => {
     const calls = buildRunPromptCalls(
       baseRun({

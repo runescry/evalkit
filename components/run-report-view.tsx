@@ -244,6 +244,9 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
           {run.input.scoringMode === 'dual' ? (
             <span className="stat-pill">Dual scoring</span>
           ) : null}
+          {run.input.scoringMode === 'multi-vendor' ? (
+            <span className="stat-pill">Multi-vendor scoring</span>
+          ) : null}
         </div>
 
         <RunCostSummary metrics={metrics} runStatus={run.status} isLive={isRunning} />
@@ -291,7 +294,9 @@ export function RunReportView({ initialRun }: RunReportViewProps) {
 
         <FlaggedFindings testCases={run.testCases} results={run.results} />
 
-        {run.input.scoringMode === 'dual' ? <TierComparison results={run.results} /> : null}
+        {run.input.scoringMode === 'dual' || run.input.scoringMode === 'multi-vendor' ? (
+          <TierComparison results={run.results} />
+        ) : null}
 
         <ApprovalCard
           runId={run.id}

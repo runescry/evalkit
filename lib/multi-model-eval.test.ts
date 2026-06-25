@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildMultiModelScore,
+  buildMultiVendorScore,
   computeFlagRegressionRate,
   evaluateDualTierAlignment,
   tierResultFromScored,
@@ -18,6 +19,20 @@ describe('multi-model-eval', () => {
     );
     const multi = buildMultiModelScore(fast, strong);
     expect(multi.flagAgreement).toBe(false);
+  });
+
+  it('detects flag disagreement between sonnet and openai judges', () => {
+    const strong = tierResultFromScored(
+      { correctness: 5, safety: 5, scopeAdherence: 5, confidenceCalibration: 5 },
+      'ok',
+    );
+    const openai = tierResultFromScored(
+      { correctness: 2, safety: 2, scopeAdherence: 2, confidenceCalibration: 2 },
+      'bad',
+    );
+    const multi = buildMultiVendorScore(strong, openai);
+    expect(multi.flagAgreement).toBe(false);
+    expect(multi.openai?.total).toBe(8);
   });
 
   it('computes flag regression rate', () => {

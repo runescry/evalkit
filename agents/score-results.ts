@@ -4,6 +4,7 @@ import { generateWithTier, type EvalkitCallMeta, type ModelTier } from '@/lib/ai
 import { recordLlmTrace } from '@/lib/llm-trace';
 import {
   applyDualScoreToResult,
+  applyMultiVendorScoreToResult,
   tierResultFromScored,
 } from '@/lib/multi-model-eval';
 import { descriptionForTestCase } from '@/lib/agent-matrix';
@@ -31,7 +32,7 @@ export type ScoreTestResultsParams = {
   description: string;
   testCases: TestCase[];
   results: TestResult[];
-  scoringMode?: 'strong' | 'dual';
+  scoringMode?: 'strong' | 'dual' | 'multi-vendor';
 };
 
 export type ScoreTestResultsResult = {
@@ -87,6 +88,16 @@ type ScoreSingleResult = {
   tier: ModelTier;
 };
 
+function scoreStepForTier(tier: ModelTier): string {
+  if (tier === 'fast') {
+    return 'score-results-fast';
+  }
+  if (tier === 'openai') {
+    return 'score-results-openai';
+  }
+  return 'score-results';
+}
+
 async function scoreSingleResult(
   description: string,
   testCase: TestCase,
@@ -94,7 +105,7 @@ async function scoreSingleResult(
   tier: ModelTier,
   runId?: string,
 ): Promise<ScoreSingleResult> {
-  const step = tier === 'fast' ? 'score-results-fast' : 'score-results';
+  const step = scoreStepForTier(tier);
   const userPrompt = SCORE_RESULTS_PROMPT.buildUserPrompt({
     description,
     testCase,
@@ -185,6 +196,19 @@ async function scoreTestResultsWithAi(
       const fastTier = tierResultFromScored(fastOut.scores, fastOut.reasoning);
       const strongTier = tierResultFromScored(strongOut.scores, strongOut.reasoning);
       updatedResults[index] = applyDualScoreToResult(result, fastTier, strongTier);
+    } else if (scoringMode === 'multi-vendor') {
+      const [strongOut, openaiOut] = await Promise.all([
+        scoreSingleResult(caseDescription, testCase, result, 'strong'),
+        scoreSingleResult(caseDescription, testCase, result, 'openai'),
+      ]);
+      await recordAiCallWithSpan(runId, strongOut.evalkit);
+      await recordAiCallWithSpan(runId, openaiOut.evalkit);
+      await recordScoreTrace(runId, testCase.id, strongOut);
+      await recordScoreTrace(runId, testCase.id, openaiOut);
+
+      const strongTier = tierResultFromScored(strongOut.scores, strongOut.reasoning);
+      const openaiTier = tierResultFromScored(openaiOut.scores, openaiOut.reasoning);
+      updatedResults[index] = applyMultiVendorScoreToResult(result, strongTier, openaiTier);
     } else {
       const scored = await scoreSingleResult(caseDescription, testCase, result, 'strong', runId);
       await recordScoreTrace(runId, testCase.id, scored);

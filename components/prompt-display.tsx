@@ -1,6 +1,7 @@
 'use client';
 
 import { ReportMarkdown } from '@/components/report-markdown';
+import type { ModelTier } from '@/lib/ai';
 import { cn } from '@/lib/utils';
 import type { LlmTraceMessage } from '@/lib/types';
 
@@ -72,7 +73,7 @@ export function PromptMessageBlock({ message, className }: PromptMessageBlockPro
 type PromptCallCardProps = {
   label: string;
   step: string;
-  tier?: 'fast' | 'strong';
+  tier?: ModelTier;
   version?: string;
   hash?: string;
   outputFormat?: string;

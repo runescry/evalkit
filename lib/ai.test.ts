@@ -88,6 +88,32 @@ describe('lib/ai', () => {
     );
   });
 
+  it('routes openai tier to gpt-4.1 via gateway', async () => {
+    generateTextMock.mockResolvedValue({
+      text: 'ok',
+      usage: { inputTokens: 10, outputTokens: 4 },
+      providerMetadata: { gateway: { generationId: 'gen-oai', totalCost: 0.0002 } },
+    });
+
+    const result = await generateWithTier({
+      tier: 'openai',
+      step: 'score-results-openai',
+      prompt: 'score',
+    });
+
+    expect(generateTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: `gateway:${TIER_MODELS.openai.primary}`,
+        providerOptions: {
+          gateway: {
+            tags: ['evalkit.tier:openai', 'evalkit.step:score-results-openai'],
+          },
+        },
+      }),
+    );
+    expect(result.evalkit.evalkitTier).toBe('openai');
+  });
+
   it('escalates fast tier fallbacks through gateway.models including sonnet', () => {
     expect(TIER_MODELS.fast.fallbacks).toContain('google/gemini-2.5-flash');
     expect(TIER_MODELS.fast.fallbacks).toContain('anthropic/claude-sonnet-4-6');

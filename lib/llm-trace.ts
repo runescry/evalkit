@@ -8,7 +8,7 @@ const TRACE_APPEND_RETRIES = 6;
 
 export type AppendLlmTraceParams = {
   step: string;
-  tier?: 'fast' | 'strong';
+  tier?: 'fast' | 'strong' | 'openai';
   testCaseId?: string;
   system?: string;
   user: string;

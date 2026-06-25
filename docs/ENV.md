@@ -26,4 +26,5 @@ Never commit `.env.local`. Placeholders only in `.env.example`.
 ## Security
 
 - No model provider keys in application code — Gateway only
+- OpenAI for multi-vendor scoring is configured in the **Vercel AI Gateway dashboard** (BYOK), not via an app env var
 - See [SECURITY.md](../SECURITY.md)

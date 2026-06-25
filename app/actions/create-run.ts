@@ -60,7 +60,9 @@ export async function startPresetRunAction(
         ? generationMode
         : undefined,
     scoringMode:
-      scoringMode === 'dual' || scoringMode === 'strong' ? scoringMode : undefined,
+      scoringMode === 'dual' || scoringMode === 'strong' || scoringMode === 'multi-vendor'
+        ? scoringMode
+        : undefined,
   });
 
   if (!input) {

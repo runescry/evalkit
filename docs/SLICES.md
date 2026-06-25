@@ -23,6 +23,7 @@ One slice per branch. Merge to `main` in order. Check box when merged.
 | 15 | `release/v1` | complete | Error boundaries, README, CHANGELOG 1.0.0, prod deploy |
 | 16 | `feature/post-v1-interview` | complete | Agent-matrix, architecture page, demo presets, dual scoring, LLM prompts panel |
 | 17 | `infra/observability-trace` | complete | Cost metrics hardening, LLM trace panel, Gateway cost backfill |
+| 18 | `feature/multi-vendor-scoring` | complete | Sonnet + OpenAI judges via Gateway BYOK, multi-vendor scoring mode |
 
 ## Per-slice test requirements
 
@@ -160,3 +161,11 @@ Suites with no files yet report `N/A` and pass until the introducing slice lands
 - [x] `LlmTracePanel` on `/runs/[id]` — system/user/assistant; cost summary shows while run active with metrics polling
 - [x] Tests — `lib/llm-trace.test.ts`, observability generationIds, agent mocks updated
 - [x] `npm run gates` green
+
+## Slice 18 acceptance (multi-vendor scoring)
+
+- [x] `scoringMode: multi-vendor` — parallel Sonnet + OpenAI (`openai/gpt-4.1`) via `lib/ai.ts` Gateway routing
+- [x] Eval form third scoring option; `create-run` allowlist; `/api/health` pings `openai` tier
+- [x] Primary scores/flags from Sonnet; `multiModelScore.openai` stores second judge; `TierComparison` vendor disagreements
+- [x] `lib/run-prompts.ts` reconstructs strong + openai score calls for runs without stored trace
+- [x] ADR-011; `docs/ENV.md` BYOK note; `npm run gates` green

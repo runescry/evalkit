@@ -34,6 +34,29 @@ export function buildMultiModelScore(
   };
 }
 
+export function buildMultiVendorScore(
+  strong: TierRubricResult,
+  openai: TierRubricResult,
+): MultiModelScore {
+  return {
+    strong,
+    openai,
+    flagAgreement: strong.flagged === openai.flagged,
+  };
+}
+
+export function applyMultiVendorScoreToResult(
+  result: TestResult,
+  strong: TierRubricResult,
+  openai: TierRubricResult,
+): TestResult {
+  const primary = buildScoredTestResult(result, strong.scores, strong.reasoning);
+  return {
+    ...primary,
+    multiModelScore: buildMultiVendorScore(strong, openai),
+  };
+}
+
 export function applyDualScoreToResult(
   result: TestResult,
   fast: TierRubricResult,

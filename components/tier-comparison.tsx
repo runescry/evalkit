@@ -11,22 +11,26 @@ type TierComparisonProps = {
 
 export function TierComparison({ results }: TierComparisonProps) {
   const stats = useMemo(() => {
-    const dual = results.filter((r) => r.multiModelScore);
-    if (dual.length === 0) {
+    const scored = results.filter((r) => r.multiModelScore);
+    if (scored.length === 0) {
       return null;
     }
 
-    const agreements = dual.filter((r) => r.multiModelScore?.flagAgreement).length;
-    const fastFlagged = dual.filter((r) => r.multiModelScore?.fast.flagged).length;
-    const strongFlagged = dual.filter((r) => r.multiModelScore?.strong.flagged).length;
-    const disagreements = dual.filter((r) => !r.multiModelScore?.flagAgreement);
+    const multiVendor = scored.some((r) => r.multiModelScore?.openai != null);
+    const agreements = scored.filter((r) => r.multiModelScore?.flagAgreement).length;
+    const primaryFlagged = scored.filter((r) => r.multiModelScore?.strong.flagged).length;
+    const secondaryFlagged = multiVendor
+      ? scored.filter((r) => r.multiModelScore?.openai?.flagged).length
+      : scored.filter((r) => r.multiModelScore?.fast?.flagged).length;
+    const disagreements = scored.filter((r) => !r.multiModelScore?.flagAgreement);
 
     return {
-      total: dual.length,
+      multiVendor,
+      total: scored.length,
       agreements,
-      agreementRate: agreements / dual.length,
-      fastFlagged,
-      strongFlagged,
+      agreementRate: agreements / scored.length,
+      primaryFlagged,
+      secondaryFlagged,
       disagreements,
     };
   }, [results]);
@@ -40,8 +44,9 @@ export function TierComparison({ results }: TierComparisonProps) {
       <CardHeader className="border-b border-border/60">
         <CardTitle className="text-title">Multi-model scoring</CardTitle>
         <CardDescription>
-          Each case scored by fast (Haiku) and strong (Sonnet) tiers. Primary report uses strong
-          scores; disagreements highlight where cheaper models diverge.
+          {stats.multiVendor
+            ? 'Each case scored by Anthropic Sonnet (primary) and OpenAI (second judge). Disagreements highlight cross-vendor drift.'
+            : 'Each case scored by fast (Haiku) and strong (Sonnet) tiers. Primary report uses strong scores.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
@@ -50,13 +55,19 @@ export function TierComparison({ results }: TierComparisonProps) {
             {stats.agreements}/{stats.total} flag agreement (
             {Math.round(stats.agreementRate * 100)}%)
           </span>
-          <span className="stat-pill">Fast flagged: {stats.fastFlagged}</span>
-          <span className="stat-pill">Strong flagged: {stats.strongFlagged}</span>
+          <span className="stat-pill">
+            {stats.multiVendor ? 'Sonnet' : 'Strong'} flagged: {stats.primaryFlagged}
+          </span>
+          <span className="stat-pill">
+            {stats.multiVendor ? 'OpenAI' : 'Fast'} flagged: {stats.secondaryFlagged}
+          </span>
         </div>
 
         {stats.disagreements.length > 0 ? (
           <div className="space-y-3">
-            <p className="text-[13px] font-medium text-foreground">Tier disagreements</p>
+            <p className="text-[13px] font-medium text-foreground">
+              {stats.multiVendor ? 'Vendor disagreements' : 'Tier disagreements'}
+            </p>
             {stats.disagreements.map((result) => {
               const multi = result.multiModelScore!;
               return (
@@ -69,8 +80,19 @@ export function TierComparison({ results }: TierComparisonProps) {
                       {result.testCaseId}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      fast {multi.fast.total}/20 {multi.fast.flagged ? '(flagged)' : ''} · strong{' '}
-                      {multi.strong.total}/20 {multi.strong.flagged ? '(flagged)' : ''}
+                      {stats.multiVendor ? (
+                        <>
+                          sonnet {multi.strong.total}/20 {multi.strong.flagged ? '(flagged)' : ''} ·
+                          openai {multi.openai?.total ?? '—'}/20{' '}
+                          {multi.openai?.flagged ? '(flagged)' : ''}
+                        </>
+                      ) : (
+                        <>
+                          fast {multi.fast?.total ?? '—'}/20 {multi.fast?.flagged ? '(flagged)' : ''}{' '}
+                          · strong {multi.strong.total}/20{' '}
+                          {multi.strong.flagged ? '(flagged)' : ''}
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -79,7 +101,9 @@ export function TierComparison({ results }: TierComparisonProps) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Fast and strong tiers agreed on all flag decisions.
+            {stats.multiVendor
+              ? 'Sonnet and OpenAI agreed on all flag decisions.'
+              : 'Fast and strong tiers agreed on all flag decisions.'}
           </p>
         )}
       </CardContent>

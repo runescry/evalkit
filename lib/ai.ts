@@ -6,7 +6,7 @@ import {
 } from 'ai';
 import { recordAiCallWithSpan } from '@/lib/observability';
 
-export type ModelTier = 'fast' | 'strong';
+export type ModelTier = 'fast' | 'strong' | 'openai';
 
 export type TierModelConfig = {
   primary: string;
@@ -21,6 +21,10 @@ export const TIER_MODELS: Record<ModelTier, TierModelConfig> = {
   },
   strong: {
     primary: 'anthropic/claude-sonnet-4-6',
+    fallbacks: [],
+  },
+  openai: {
+    primary: 'openai/gpt-4.1',
     fallbacks: [],
   },
 };

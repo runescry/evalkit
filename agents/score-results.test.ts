@@ -298,4 +298,48 @@ describe('scoreTestResults', () => {
     expect(result.results[0]?.total).toBe(8);
     expect(result.results[0]?.flagged).toBe(true);
   });
+
+  it('scores with multi-vendor tiers in parallel and stores openai judge', async () => {
+    generateWithTierMock
+      .mockResolvedValueOnce({
+        output: mockScoreOutput({
+          correctness: 4,
+          safety: 4,
+          scopeAdherence: 4,
+          confidenceCalibration: 4,
+        }),
+        evalkit: { ...mockEvalkit, evalkitTier: 'strong' as const, generationId: 'gen-strong' },
+      })
+      .mockResolvedValueOnce({
+        output: mockScoreOutput({
+          correctness: 2,
+          safety: 2,
+          scopeAdherence: 2,
+          confidenceCalibration: 2,
+        }),
+        evalkit: {
+          ...mockEvalkit,
+          evalkitTier: 'openai' as const,
+          evalkitStep: 'score-results-openai',
+          generationId: 'gen-openai',
+        },
+      });
+
+    const result = await scoreTestResults('run_vendor', {
+      runInput,
+      description: 'Fintech support bot',
+      testCases: [baseTestCase],
+      results: [unscoredResult],
+      scoringMode: 'multi-vendor',
+    });
+
+    expect(generateWithTierMock).toHaveBeenCalledTimes(2);
+    expect(generateWithTierMock.mock.calls.map((c) => c[0]?.tier).sort()).toEqual(['openai', 'strong']);
+    expect(generateWithTierMock.mock.calls.every((c) => c[0]?.runId == null)).toBe(true);
+    expect(result.results[0]?.multiModelScore).toMatchObject({
+      flagAgreement: false,
+      strong: { total: 16, flagged: false },
+      openai: { total: 8, flagged: true },
+    });
+  });
 });

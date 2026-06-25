@@ -75,8 +75,9 @@ export const tierRubricResultSchema = z.object({
 });
 
 export const multiModelScoreSchema = z.object({
-  fast: tierRubricResultSchema,
+  fast: tierRubricResultSchema.optional(),
   strong: tierRubricResultSchema,
+  openai: tierRubricResultSchema.optional(),
   flagAgreement: z.boolean(),
 });
 
@@ -110,8 +111,8 @@ export const evalRunInputSchema = z.object({
   caseCount: z.number().int().min(1).max(50),
   /** standard = fast Haiku generation; adversarial = strong-tier red-team generation */
   generationMode: z.enum(['standard', 'adversarial']).default('standard'),
-  /** strong = sonnet scorer only; dual = score with fast + strong and compare */
-  scoringMode: z.enum(['strong', 'dual']).default('dual'),
+  /** strong = sonnet only; dual = fast + strong; multi-vendor = sonnet + openai via Gateway BYOK */
+  scoringMode: z.enum(['strong', 'dual', 'multi-vendor']).default('dual'),
   /** single = one target; agent-matrix = per-agent contracts in agents[] */
   evalMode: z.enum(['single', 'agent-matrix']).optional(),
   /** Per-agent persona contracts for agent-matrix eval. */
@@ -156,7 +157,7 @@ export const llmTraceMessageSchema = z.object({
 export const llmTraceEntrySchema = z.object({
   id: z.string().min(1),
   step: z.string().min(1),
-  tier: z.enum(['fast', 'strong']).optional(),
+  tier: z.enum(['fast', 'strong', 'openai']).optional(),
   testCaseId: z.string().min(1).optional(),
   modelId: z.string().nullable().optional(),
   latencyMs: z.number().nonnegative().optional(),

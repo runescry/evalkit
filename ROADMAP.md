@@ -35,6 +35,7 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 - [x] **15** Release v1 (`release/v1`)
 - [x] **16** Post-v1 interview polish (`feature/post-v1-interview`)
 - [x] **17** Observability + LLM trace (`infra/observability-trace`)
+- [x] **18** Multi-vendor scoring (`feature/multi-vendor-scoring`) — Sonnet + OpenAI via Gateway BYOK
 
 ## Future / backlog
 
@@ -56,3 +57,8 @@ Track progress by slice. Mirror of [docs/SLICES.md](./docs/SLICES.md).
 - Cost metrics race fix (dual score), KV merge retries, Gateway cost backfill
 - **LLM trace** panel — prompts + model responses per pipeline step
 - Cost summary visible during active runs with metrics polling
+
+## Shipped in Slice 18 (summary)
+
+- `scoringMode: multi-vendor` — Sonnet primary + OpenAI second judge via Gateway BYOK
+- Eval form scoring dropdown, health ping for `openai` tier, vendor comparison UI
