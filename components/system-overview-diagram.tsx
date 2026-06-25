@@ -3,7 +3,6 @@
 import {
   SYSTEM_OVERVIEW,
   type ArchitectureTab,
-  type SystemOverviewNode,
 } from '@/lib/architecture-graph';
 import { cn } from '@/lib/utils';
 
@@ -14,177 +13,147 @@ function rgb(hex: string): string {
   return `${r},${g},${b}`;
 }
 
-function VerticalConnector() {
-  return (
-    <div className="flex justify-center py-1" aria-hidden>
-      <div className="h-6 w-0.5 rounded bg-border" />
-    </div>
-  );
-}
-
-function OverviewNodeCard({
-  node,
-  onNavigate,
-}: {
-  node: SystemOverviewNode;
-  onNavigate: (tab: ArchitectureTab, id?: string) => void;
-}) {
-  const clickable = node.backendNodeId ?? node.workflowStepId;
-
-  return (
-    <button
-      type="button"
-      disabled={!clickable}
-      onClick={() => {
-        if (node.backendNodeId) {
-          onNavigate('backend-map', node.backendNodeId);
-        } else if (node.workflowStepId) {
-          onNavigate('workflow', node.workflowStepId);
-        }
-      }}
-      className={cn(
-        'rounded-xl border-2 px-3 py-2.5 text-left transition-colors',
-        clickable ? 'hover:border-primary/40' : 'cursor-default',
-      )}
-      style={{
-        borderColor: `rgba(${rgb(node.color)},0.45)`,
-        background: `rgba(${rgb(node.color)},0.08)`,
-      }}
-    >
-      <p className="text-[12px] font-semibold text-foreground">{node.label}</p>
-      {node.sublabel ? (
-        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{node.sublabel}</p>
-      ) : null}
-    </button>
-  );
-}
-
 type SystemOverviewDiagramProps = {
   onNavigate: (tab: ArchitectureTab, id?: string) => void;
 };
 
 export function SystemOverviewDiagram({ onNavigate }: SystemOverviewDiagramProps) {
   return (
-    <div className="space-y-6">
-      <p className="text-[13px] leading-relaxed text-muted-foreground">{SYSTEM_OVERVIEW.tagline}</p>
+    <div className="space-y-5">
 
-      <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-primary">End-to-end flow</p>
-        <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-          {SYSTEM_OVERVIEW.dataFlow.map((line) => (
-            <li key={line} className="text-[12px] leading-relaxed text-muted-foreground">
-              {line}
-            </li>
-          ))}
-        </ol>
+      {/* Context: what evaluates what */}
+      <div className="flex items-stretch gap-3 rounded-xl border border-border bg-muted/20 p-4">
+        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-[#0d9488]/40 bg-[#0d9488]/10 px-4 py-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#0d9488]">Target chatbot</p>
+          <p className="mt-1 text-base font-bold text-foreground">aidea</p>
+          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">aidea-co.vercel.app</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            Multi-agent personal assistant.<br />
+            Exposes <code className="text-[10px]">/api/eval/agent</code> for EvalKit.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-2">
+          <div className="h-0.5 w-12 rounded bg-gradient-to-r from-[#0d9488]/40 to-primary/40" />
+          <p className="rotate-0 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">evaluates</p>
+          <div className="text-muted-foreground">→</div>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-primary/40 bg-primary/10 px-4 py-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eval harness</p>
+          <p className="mt-1 text-base font-bold text-foreground">EvalKit</p>
+          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">this system</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            URL + contract → test cases →<br />
+            sandbox → score → report → fixes
+          </p>
+        </div>
       </div>
 
+      {/* Pipeline hero */}
       <div className="rounded-xl border border-border bg-muted/20 p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
-          Durable pipeline (Workflow SDK)
-        </p>
-        <div className="mt-3 overflow-x-auto pb-1">
-          <div className="flex min-w-max items-center gap-1">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-primary">Eval pipeline</p>
+          <button
+            type="button"
+            onClick={() => onNavigate('pipeline')}
+            className="text-[11px] font-semibold text-primary hover:underline"
+          >
+            Step-by-step walkthrough →
+          </button>
+        </div>
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max items-center gap-0.5">
             {SYSTEM_OVERVIEW.pipelineSteps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 {index > 0 ? (
-                  <span className="mx-0.5 text-muted-foreground" aria-hidden>
-                    →
-                  </span>
+                  <span className="mx-1.5 text-sm text-muted-foreground" aria-hidden>→</span>
                 ) : null}
                 <button
                   type="button"
                   onClick={() => onNavigate('workflow', step.workflowStepId)}
-                  className="rounded-lg border-2 px-2.5 py-2 text-center transition-colors hover:border-primary/40"
+                  className="group flex flex-col items-center rounded-xl border-2 px-3 py-3 text-center transition-all hover:scale-[1.04] hover:shadow-sm"
                   style={{
-                    borderColor: `rgba(${rgb(step.color)},0.5)`,
-                    background: `rgba(${rgb(step.color)},0.1)`,
+                    borderColor: `rgba(${rgb(step.color)},0.55)`,
+                    background: `rgba(${rgb(step.color)},0.10)`,
+                    minWidth: 76,
                   }}
                 >
-                  <span className="text-base" aria-hidden>
-                    {step.icon}
-                  </span>
-                  <p className="text-[10px] font-bold text-foreground">{step.label}</p>
+                  <span className="text-2xl" aria-hidden>{step.icon}</span>
+                  <p className="mt-1.5 text-[11px] font-bold leading-tight text-foreground">{step.label}</p>
                 </button>
               </div>
             ))}
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Click a step to jump to the Workflow tab. Each step checkpoints to KV; sandbox and score write
-          incrementally where noted.
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Click any step to see implementation detail, infrastructure choice, and KV writes.
         </p>
       </div>
 
-      <div className="mx-auto max-w-3xl">
-        <p className="mb-3 text-center text-[11px] font-bold uppercase tracking-wide text-primary">
-          System layers
-        </p>
-        {SYSTEM_OVERVIEW.rows.map((row, rowIndex) => (
-          <div key={row.id}>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                {row.title}
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">{row.description}</p>
-              <div
-                className={cn(
-                  'mt-3 grid gap-2',
-                  row.nodes.length === 1
-                    ? 'grid-cols-1'
-                    : row.nodes.length === 2
-                      ? 'grid-cols-1 sm:grid-cols-2'
-                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-                )}
-              >
-                {row.nodes.map((node) => (
-                  <OverviewNodeCard key={node.id} node={node} onNavigate={onNavigate} />
-                ))}
-              </div>
-            </div>
-            {rowIndex < SYSTEM_OVERVIEW.rows.length - 1 ? <VerticalConnector /> : null}
-          </div>
-        ))}
-      </div>
-
+      {/* Vercel primitives */}
       <div className="rounded-xl border border-border bg-muted/20 p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
-          Vercel primitives (build vs buy)
-        </p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-primary">Vercel primitives — build vs buy</p>
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {SYSTEM_OVERVIEW.vercelPrimitives.map((primitive) => (
-            <div key={primitive.name} className="rounded-lg border border-border bg-card p-3">
+            <div
+              key={primitive.name}
+              className="rounded-lg border border-border bg-card p-3"
+            >
               <p className="text-[12px] font-semibold text-foreground">{primitive.name}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{primitive.role}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{primitive.role}</p>
               <div className="mt-2 flex flex-wrap gap-1">
-                <span className="stat-pill text-[10px]">{primitive.adr}</span>
+                <span className="stat-pill text-[9px]">{primitive.adr}</span>
                 {'adr2' in primitive && primitive.adr2 ? (
-                  <span className="stat-pill text-[10px]">{primitive.adr2}</span>
+                  <span className="stat-pill text-[9px]">{primitive.adr2}</span>
                 ) : null}
               </div>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          See the{' '}
-          <button
-            type="button"
-            onClick={() => onNavigate('backend-map')}
-            className="font-medium text-primary hover:underline"
-          >
-            Backend map
-          </button>{' '}
-          tab for interview one-liners and the{' '}
-          <button
-            type="button"
-            onClick={() => onNavigate('decisions')}
-            className="font-medium text-primary hover:underline"
-          >
-            ADRs
-          </button>{' '}
-          tab for trade-off detail.
-        </p>
       </div>
+
+      {/* Model tier routing */}
+      <div className="rounded-xl border border-border bg-muted/20 p-4">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-primary">Model tier routing — <code className="normal-case font-mono">lib/ai.ts</code></p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[
+            { tier: 'fast', model: 'Haiku 4.5', fallback: 'Gemini Flash → Sonnet', use: 'Standard case generation', color: '#5c7c5c' },
+            { tier: 'strong', model: 'Sonnet 4.6', fallback: '—', use: 'Adversarial gen · scoring · report · fixes', color: '#b45309' },
+            { tier: 'openai', model: 'GPT-4.1', fallback: '—', use: 'Multi-vendor judge (BYOK)', color: '#4338ca' },
+          ].map((t) => (
+            <div
+              key={t.tier}
+              className="rounded-lg border-2 p-3"
+              style={{ borderColor: `rgba(${rgb(t.color)},0.4)`, background: `rgba(${rgb(t.color)},0.06)` }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold text-white"
+                  style={{ backgroundColor: t.color }}
+                >
+                  {t.tier}
+                </span>
+                <span className="text-[12px] font-semibold text-foreground">{t.model}</span>
+              </div>
+              {t.fallback !== '—' ? (
+                <p className="mt-1 font-mono text-[9px] text-muted-foreground">↳ {t.fallback}</p>
+              ) : null}
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{t.use}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-center text-[11px] text-muted-foreground">
+        Use{' '}
+        <button type="button" onClick={() => onNavigate('pipeline')} className="font-medium text-primary hover:underline">Pipeline</button>
+        {' '}to walk through each step ·{' '}
+        <button type="button" onClick={() => onNavigate('backend-map')} className="font-medium text-primary hover:underline">Backend map</button>
+        {' '}for interview one-liners ·{' '}
+        <button type="button" onClick={() => onNavigate('decisions')} className="font-medium text-primary hover:underline">ADRs</button>
+        {' '}for trade-off detail
+      </p>
     </div>
   );
 }
