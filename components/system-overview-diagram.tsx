@@ -23,22 +23,6 @@ export function SystemOverviewDiagram({ onNavigate }: SystemOverviewDiagramProps
 
       {/* Context: what evaluates what */}
       <div className="flex items-stretch gap-3 rounded-xl border border-border bg-muted/20 p-4">
-        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-[#0d9488]/40 bg-[#0d9488]/10 px-4 py-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#0d9488]">Target chatbot</p>
-          <p className="mt-1 text-base font-bold text-foreground">aidea</p>
-          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">aidea-co.vercel.app</p>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Multi-agent personal assistant.<br />
-            Exposes <code className="text-[10px]">/api/eval/agent</code> for EvalKit.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-2">
-          <div className="h-0.5 w-12 rounded bg-gradient-to-r from-[#0d9488]/40 to-primary/40" />
-          <p className="rotate-0 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">evaluates</p>
-          <div className="text-muted-foreground">→</div>
-        </div>
-
         <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-primary/40 bg-primary/10 px-4 py-4 text-center">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eval harness</p>
           <p className="mt-1 text-base font-bold text-foreground">EvalKit</p>
@@ -46,6 +30,22 @@ export function SystemOverviewDiagram({ onNavigate }: SystemOverviewDiagramProps
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
             URL + contract → test cases →<br />
             sandbox → score → report → fixes
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-2">
+          <div className="h-0.5 w-12 rounded bg-gradient-to-r from-primary/40 to-[#0d9488]/40" />
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">evaluates</p>
+          <div className="text-muted-foreground">→</div>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-[#0d9488]/40 bg-[#0d9488]/10 px-4 py-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#0d9488]">Target chatbot</p>
+          <p className="mt-1 text-base font-bold text-foreground">aidea</p>
+          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">aidea-co.vercel.app</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            Multi-agent personal assistant.<br />
+            Exposes <code className="text-[10px]">/api/eval/agent</code> for EvalKit.
           </p>
         </div>
       </div>
