@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FlaskConical, Home, Network } from 'lucide-react';
+import { FlaskConical, Home } from 'lucide-react';
 import { SidebarRunsList } from '@/components/sidebar-runs-list';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/', label: 'New eval', icon: Home },
-  { href: '/architecture', label: 'Architecture', icon: Network },
 ] as const;
 
 export function AppSidebar() {
