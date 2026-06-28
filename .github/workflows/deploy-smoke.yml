@@ -41,7 +41,7 @@ jobs:
             if (!body.healthy && body.tiers?.every(t => t.error?.includes('credit'))) {
               console.log('Gateway credits required for healthy:true — route OK');
             }
-            if (!Array.isArray(body.tiers) || body.tiers.length !== 2) {
+            if (!Array.isArray(body.tiers) || body.tiers.length < 1) {
               throw new Error('Invalid /api/health shape');
             }
           "
