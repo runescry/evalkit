@@ -1,7 +1,7 @@
 import { EvalStartForm } from '@/components/eval-start-form';
 import { PageHeader } from '@/components/page-header';
 
-export const dynamic = 'force-dynamic';
+// export const experimental_ppr = true;  // enable with next.config ppr: 'incremental'
 
 export default async function Home() {
   return (
